@@ -65,7 +65,7 @@ class HomeSplash extends React.Component {
                     <PromoSection>
                         <Button href={docUrl('overview/overview_index')}>Overview</Button>
                         <Button href={docUrl('resources/resources_index')}>Resources</Button>
-                        <Button href="https://github.com/zio/zio-redis" target="_blank">GitHub</Button>
+                        <Button href="https://github.com/zio/zio-memcached" target="_blank">GitHub</Button>
                     </PromoSection>
                 </div>
             </SplashContainer>
@@ -93,9 +93,9 @@ class Index extends React.Component {
 
         const FeatureCallout = () => (
             <div className="productShowcaseSection paddingBottom" style={{textAlign: "center"}}>
-                <h2>Welcome to ZIO Redis</h2>
+                <h2>Welcome to ZIO Memcached</h2>
                 <MarkdownBlock>
-                    ZIO Redis is a type-safe, performant, ZIO native Redis client.
+                    ZIO Memcached is a type-safe, performant, ZIO native Memcached client.
                 </MarkdownBlock>
             </div>
         );

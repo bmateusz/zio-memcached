@@ -8,7 +8,7 @@ inThisBuild(
       Developer("jdegoes", "John De Goes", "john@degoes.net", url("https://degoes.net")),
       Developer("mijicd", "Dejan Mijic", "dmijic@acm.org", url("https://github.com/mijicd"))
     ),
-    homepage         := Some(url("https://github.com/zio/zio-redis/")),
+    homepage         := Some(url("https://github.com/zio/zio-memcached/")),
     licenses         := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
     organization     := "dev.zio",
     organizationName := "John A. De Goes and the ZIO contributors",
@@ -17,7 +17,7 @@ inThisBuild(
 )
 
 addCommandAlias("compileBenchmarks", "benchmarks/Jmh/compile")
-addCommandAlias("compileSources", "example/Test/compile; redis/Test/compile")
+addCommandAlias("compileSources", "example/Test/compile; memcached/Test/compile")
 addCommandAlias("check", "fixCheck; fmtCheck")
 addCommandAlias("fix", "scalafixAll")
 addCommandAlias("fixCheck", "scalafixAll --check")
@@ -29,15 +29,15 @@ lazy val root =
   project
     .in(file("."))
     .settings(publish / skip := true)
-    .aggregate(redis, benchmarks, example)
+    .aggregate(memcached, benchmarks, example)
 
-lazy val redis =
+lazy val memcached =
   project
-    .in(file("redis"))
+    .in(file("memcached"))
     .enablePlugins(BuildInfoPlugin)
-    .settings(buildInfoSettings("zio.redis"))
+    .settings(buildInfoSettings("zio.memcached"))
     .settings(scala3Settings)
-    .settings(stdSettings("zio-redis"))
+    .settings(stdSettings("zio-memcached"))
     .settings(
       libraryDependencies ++= List(
         "dev.zio"                %% "zio-streams"             % "2.0.1",
@@ -55,7 +55,7 @@ lazy val benchmarks =
   project
     .in(file("benchmarks"))
     .enablePlugins(JmhPlugin)
-    .dependsOn(redis)
+    .dependsOn(memcached)
     .settings(stdSettings("benchmarks"))
     .settings(
       crossScalaVersions -= Scala3,
@@ -71,7 +71,7 @@ lazy val benchmarks =
 lazy val example =
   project
     .in(file("example"))
-    .dependsOn(redis)
+    .dependsOn(memcached)
     .settings(stdSettings("example"))
     .settings(
       publish / skip := true,
@@ -88,15 +88,15 @@ lazy val example =
     )
 
 lazy val docs = project
-  .in(file("zio-redis-docs"))
+  .in(file("zio-memcached-docs"))
   .enablePlugins(MdocPlugin, DocusaurusPlugin, ScalaUnidocPlugin)
-  .dependsOn(redis)
+  .dependsOn(memcached)
   .settings(
     publish / skip := true,
-    moduleName     := "zio-redis-docs",
+    moduleName     := "zio-memcached-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
-    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(redis),
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(memcached),
     ScalaUnidoc / unidoc / target              := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
     cleanFiles += (ScalaUnidoc / unidoc / target).value,
     docusaurusCreateSite     := docusaurusCreateSite.dependsOn(Compile / unidoc).value,

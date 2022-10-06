@@ -22,17 +22,17 @@ import zio.config.ReadError
 import zio.config.magnolia.descriptor
 import zio.config.syntax._
 import zio.config.typesafe.TypesafeConfig
-import zio.redis.RedisConfig
+import zio.memcached.MemcachedConfig
 
-final case class AppConfig(redis: RedisConfig)
+final case class AppConfig(memcached: MemcachedConfig)
 
 object AppConfig {
-  type Env = AppConfig with RedisConfig
+  type Env = AppConfig with MemcachedConfig
 
   private[this] final val Config     = ZIO.attempt(ConfigFactory.load.resolve.getConfig("example"))
   private[this] final val Descriptor = descriptor[AppConfig]
 
   lazy val layer: ZLayer[Any, ReadError[String], Env] =
     TypesafeConfig.fromTypesafeConfig(Config, Descriptor) >+>
-      ZLayer.service[AppConfig].narrow(_.redis)
+      ZLayer.service[AppConfig].narrow(_.memcached)
 }

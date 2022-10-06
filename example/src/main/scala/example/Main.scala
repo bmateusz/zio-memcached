@@ -21,7 +21,7 @@ import example.config.AppConfig
 import sttp.client3.asynchttpclient.zio.AsyncHttpClientZioBackend
 import zhttp.service.Server
 import zio._
-import zio.redis.{RedisExecutor, RedisLive}
+import zio.memcached.{MemcachedExecutor, MemcachedLive}
 import zio.schema.codec.{Codec, ProtobufCodec}
 
 object Main extends ZIOAppDefault {
@@ -32,8 +32,8 @@ object Main extends ZIOAppDefault {
         AppConfig.layer,
         AsyncHttpClientZioBackend.layer(),
         ContributorsCacheLive.layer,
-        RedisExecutor.layer,
-        RedisLive.layer,
+        MemcachedExecutor.layer,
+        MemcachedLive.layer,
         ZLayer.succeed[Codec](ProtobufCodec)
       )
       .exitCode

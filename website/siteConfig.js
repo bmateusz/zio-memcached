@@ -21,12 +21,12 @@ const users = [
 ];
 
 const siteConfig = {
-  title: 'ZIO Redis',
-  tagline: 'Redis client for ZIO',
+  title: 'ZIO Memcached',
+  tagline: 'Memcached client for ZIO',
   url: 'https://zio.github.io',
-  baseUrl: '/zio-redis/',
+  baseUrl: '/zio-memcached/',
 
-  projectName: 'zio-redis',
+  projectName: 'zio-memcached',
   organizationName: 'zio',
 
   // For no header links in the top nav bar -> headerLinks: [],
@@ -102,7 +102,7 @@ const siteConfig = {
     cornerOffset: 100,
   },
 
-  customDocsPath: 'zio-redis-docs/target/mdoc',
+  customDocsPath: 'zio-memcached-docs/target/mdoc',
 
   // You may provide arbitrary config keys to be used as needed by your
   // template. For example, if you need your repo's URL...

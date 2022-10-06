@@ -19,7 +19,7 @@ To begin contributing, please follow these steps:
 
 If you don't already have one, sign up for a free [GitHub Account](https://github.com/join?source=header-home).
 
-After you [log into](https://github.com/login) GitHub using your account, go to the [ZIO Redis Project Page](https://github.com/zio/zio-redis), and click on [Fork](https://github.com/zio/zio-redis/fork) to fork the ZIO Redis repository into your own account.
+After you [log into](https://github.com/login) GitHub using your account, go to the [ZIO Memcached Project Page](https://github.com/zio/zio-memcached), and click on [Fork](https://github.com/zio/zio-memcached/fork) to fork the ZIO Memcached repository into your own account.
 
 You will make _all_ contributions from your own account. No one contributes _directly_ to the main repository. Contributors only ever merge code from other people's forks into the main repository.
 
@@ -28,10 +28,10 @@ Once you have forked the repository, you can now clone your forked repository to
 To clone your forked repository, first make sure you have installed [Git](https://git-scm.com/downloads), the version control system used by GitHub. Then open a Terminal and type the following commands:
 
 ```bash
-git clone git@github.com:your-user-name/zio-redis.git
+git clone git@github.com:your-user-name/zio-memcached.git
 ```
 
-If these steps were successful, then congratulations, you now have a complete copy of the ZIO Redis project!
+If these steps were successful, then congratulations, you now have a complete copy of the ZIO Memcached project!
 
 The next step is to build the project on your machine, to ensure you know how to compile the project and run tests.
 
@@ -63,10 +63,10 @@ Test/compile
 
 [Learn more](https://www.scala-sbt.org) about sbt to understand how you can list projects, switch projects, and otherwise manage an sbt project.
 
-The main project in ZIO Redis is `redis`, which you can focus on using sbt by issuing the following command:
+The main project in ZIO Memcached is `memcached`, which you can focus on using sbt by issuing the following command:
 
 ```bash
-project redis
+project memcached
 ```
 
 ### Building the documentation
@@ -84,29 +84,29 @@ After `docusaurusCreateSite` successfully finished, open a new terminal in the `
 yarn start
 ```
 
-This will start a `yarn` process and open your browser at [http://localhost:3000/zio-redis](http://localhost:3000/zio-redis), serving you a local copy of the ZIO Redis microsite.
+This will start a `yarn` process and open your browser at [http://localhost:3000/zio-memcached](http://localhost:3000/zio-memcached), serving you a local copy of the ZIO Memcached microsite.
 
 ### Find an Issue
 
-You may have your own idea about what contributions to make to ZIO Redis, which is great! If you want to make sure the ZIO Redis contributors are open to your idea, you can [open an issue](https://github.com/zio/zio-redis/issues/new) first on the ZIO Redis project site.
+You may have your own idea about what contributions to make to ZIO Memcached, which is great! If you want to make sure the ZIO Memcached contributors are open to your idea, you can [open an issue](https://github.com/zio/zio-memcached/issues/new) first on the ZIO Memcached project site.
 
-Otherwise, if you have no ideas about what to contribute, you can find a large supply of feature requests and bugs on the project's [issue tracker](https://github.com/zio/zio-redis/issues).
+Otherwise, if you have no ideas about what to contribute, you can find a large supply of feature requests and bugs on the project's [issue tracker](https://github.com/zio/zio-memcached/issues).
 
 Issues are tagged with various labels, such as `good first issue`, which help you find issues that are a fit for you.
 
-If some issue is confusing or you think you might need help, then just post a comment on the issue asking for help. Typically, the author of the issue will provide as much help as you need, and if the issue is critical, leading ZIO Redis contributors will probably step in to mentor you and give you a hand, making sure you understand the issue thoroughly.
+If some issue is confusing or you think you might need help, then just post a comment on the issue asking for help. Typically, the author of the issue will provide as much help as you need, and if the issue is critical, leading ZIO Memcached contributors will probably step in to mentor you and give you a hand, making sure you understand the issue thoroughly.
 
 Once you've decided on an issue and understand what is necessary to complete the issue, then it's a good idea to post a comment on the issue saying that you intend to work on it. Otherwise, someone else might work on it too!
 
 ### Fix an Issue
 
-Once you have an issue, the next step is to fix the bug or implement the feature. Since ZIO Redis is an open source project, there are no deadlines. Take your time!
+Once you have an issue, the next step is to fix the bug or implement the feature. Since ZIO Memcached is an open source project, there are no deadlines. Take your time!
 
 The only thing you have to worry about is if you take too long, especially for a critical issue, eventually someone else will come along and work on the issue.
 
 If you shoot for 2-3 weeks for most issues, this should give you plenty of time without having to worry about having your issue stolen.
 
-If you get stuck, please consider [opening a pull request](https://github.com/zio/zio-redis/compare) for your incomplete work, and asking for help (just prefix the pull request by _WIP_). In addition, you can comment on the original issue, pointing people to your own fork. Both of these are great ways to get outside help from people more familiar with the project.
+If you get stuck, please consider [opening a pull request](https://github.com/zio/zio-memcached/compare) for your incomplete work, and asking for help (just prefix the pull request by _WIP_). In addition, you can comment on the original issue, pointing people to your own fork. Both of these are great ways to get outside help from people more familiar with the project.
 
 ### Prepare Your Code
 
@@ -136,12 +136,12 @@ At this point, you have saved your work locally, to your machine, but you still 
 git push
 ```
 
-Now while you were working on this great improvement, it's quite likely that other ZIO Redis contributors were making their own improvements. You need to pull all those improvements into your own code base to resolve any conflicts and make sure the changes all work well together.
+Now while you were working on this great improvement, it's quite likely that other ZIO Memcached contributors were making their own improvements. You need to pull all those improvements into your own code base to resolve any conflicts and make sure the changes all work well together.
 
 To do that, use the `git pull` command:
 
 ```bash
-git pull git@github.com:zio/zio-redis.git master
+git pull git@github.com:zio/zio-memcached.git master
 ```
 
 You may get a warning from Git that some files conflicted. Don't worry! That just means you and another contributor edited the same parts of the same files.
@@ -190,7 +190,7 @@ To create a pull request, first push all your changes to your fork of the projec
 git push
 ```
 
-Next, [open a new pull request](https://github.com/zio/zio-redis/compare) on GitHub, and select _Compare Across Forks_. On the right hand side, choose your own fork of the ZIO repository, in which you've been making your contribution.
+Next, [open a new pull request](https://github.com/zio/zio-memcached/compare) on GitHub, and select _Compare Across Forks_. On the right hand side, choose your own fork of the ZIO repository, in which you've been making your contribution.
 
 Provide a description for the pull request, which details the issue it is fixing, and has other information that may be helpful to developers reviewing the pull request.
 
@@ -198,7 +198,7 @@ Finally, click _Create Pull Request_!
 
 ### Get Your Pull Request Merged
 
-Once you have a pull request open, it's still your job to get it merged! To get it merged, you need at least one core ZIO Redis contributor to approve the code.
+Once you have a pull request open, it's still your job to get it merged! To get it merged, you need at least one core ZIO Memcached contributor to approve the code.
 
 If you know someone who would be qualified to review your code, you can request that person, either in the comments of the pull request, or on the right-hand side, if you have appropriate permissions.
 
@@ -210,11 +210,11 @@ After you make changes, you may need to remind reviewers to check out the code a
 
 If you don't get a merge in a day after your review is successful, then please gently remind folks that your code is ready to be merged.
 
-Sit back, relax, and enjoy being a ZIO Redis contributor!
+Sit back, relax, and enjoy being a ZIO Memcached contributor!
 
 # ZIO Contributor License Agreement
 
-Thank you for your interest in contributing to the ZIO Redis open source project.
+Thank you for your interest in contributing to the ZIO Memcached open source project.
 
 This contributor agreement ("Agreement") describes the terms and conditions under which you may Submit a Contribution to Us. By Submitting a Contribution to Us, you accept the terms and conditions in the Agreement. If you do not accept the terms and conditions in the Agreement, you must not Submit any Contribution to Us.
 

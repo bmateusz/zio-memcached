@@ -1,4 +1,4 @@
-* @zio/zio-redis
+* @zio/zio-memcached
 .github/workflows/ @mijicd
 build.sbt @mijicd
 project/BuildHelper.scala @mijicd

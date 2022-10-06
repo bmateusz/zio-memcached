@@ -1,14 +1,14 @@
 version: "3.2"
 
 services:
-  redis1:
-    container_name: test_redis_1
-    image: redis:6.2.7-alpine
+  memcached1:
+    container_name: test_memcached_1
+    image: memcached:1.6.17-alpine
     ports:
-      - "6379:6379"
+      - "11211:11211"
 
-  redis2:
-    container_name: test_redis_2
-    image: redis:6.2.7-alpine
+  memcached2:
+    container_name: test_memcached_2
+    image: memcached:1.6.17-alpine
     ports:
-      - "6380:6379"
+      - "11212:11211"

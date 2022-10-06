@@ -1,7 +1,7 @@
 ---
 id: about_index
-title: "About ZIO Redis"
+title: "About ZIO Memcached"
 ---
 
-ZIO Redis is a type-safe, performant, ZIO native Redis client.
+ZIO Memcached is a type-safe, performant, ZIO native Memcached client.
 
