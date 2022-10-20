@@ -15,5 +15,6 @@ object ValueHeaders {
 
   final case class ValueHeader(key: String, flags: Int, bytes: Int) extends GenericValueHeader
 
-  final case class ValueHeaderWithCas(key: String, flags: Int, bytes: Int, casUnique: CasUnique) extends GenericValueHeader
+  final case class ValueHeaderWithCas(key: String, flags: Int, bytes: Int, casUnique: CasUnique)
+      extends GenericValueHeader
 }

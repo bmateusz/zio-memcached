@@ -16,12 +16,11 @@ object MetaDebugFlags {
   /**
    * interpret key as base64 encoded binary value
    *
-   * This flag instructs memcached to run a base64 decoder on <key> before looking
-   * it up. This allows storing and fetching of binary packed keys, so long as they
-   * are sent to memcached in base64 encoding.
+   * This flag instructs memcached to run a base64 decoder on <key> before looking it up. This allows storing and
+   * fetching of binary packed keys, so long as they are sent to memcached in base64 encoding.
    *
-   * If 'b' flag is sent in the response, and a key is returned via 'k', this
-   * signals to the client that the key is base64 encoded binary.
+   * If 'b' flag is sent in the response, and a key is returned via 'k', this signals to the client that the key is
+   * base64 encoded binary.
    */
   case object InterpretKeyAsBase64 extends MetaDebugFlag {
     override def flag: String = "b"
@@ -38,7 +37,7 @@ object MetaDebugFlags {
       val flags = string
         .split(" ")
         .map {
-          case "b" => InterpretKeyAsBase64
+          case "b"  => InterpretKeyAsBase64
           case flag => throw new IllegalArgumentException(s"Unknown flag $flag")
         }
       new MetaDebugFlags(flags.toSeq)
@@ -51,8 +50,8 @@ class MetaDebugFlags(val flags: Seq[MetaDebugFlag]) {
   import zio.memcached.Input.{EmptyChunk, WhitespaceChunk}
 
   val encoded: Chunk[Byte] =
-    flags.foldLeft(EmptyChunk) {
-      (acc, flag) => acc ++ WhitespaceChunk ++ flag.flag.getBytes(StandardCharsets.US_ASCII)
+    flags.foldLeft(EmptyChunk) { (acc, flag) =>
+      acc ++ WhitespaceChunk ++ flag.flag.getBytes(StandardCharsets.US_ASCII)
     }
 
   override def toString: String = flags.map(_.flag).mkString(" ")

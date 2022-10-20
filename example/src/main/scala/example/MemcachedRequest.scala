@@ -20,11 +20,13 @@ import zio._
 import zio.json.{DeriveJsonCodec, JsonCodec}
 import zio.memcached.model.CasUnique
 
-final case class MemcachedRequest(key: String,
-                                  value: Option[String],
-                                  ttl: Option[String],
-                                  compareAndSet: Option[String],
-                                  metaFlags: Option[String]) {
+final case class MemcachedRequest(
+  key: String,
+  value: Option[String],
+  ttl: Option[String],
+  compareAndSet: Option[String],
+  metaFlags: Option[String]
+) {
   def ttoAsDuration: Option[Duration] = ttl.flatMap(_.toIntOption).map(_.seconds)
 
   def extractValue: ZIO[Any, ApiError, String] =
@@ -37,7 +39,9 @@ final case class MemcachedRequest(key: String,
     ZIO.fromOption(ttoAsDuration).mapError(_ => ApiError.MissingMandatoryField("ttl"))
 
   def extractCas: ZIO[Any, ApiError, CasUnique] =
-    ZIO.fromOption(compareAndSet.flatMap(_.toLongOption)).mapBoth(_ => ApiError.MissingMandatoryField("compareAndSet"), CasUnique.apply)
+    ZIO
+      .fromOption(compareAndSet.flatMap(_.toLongOption))
+      .mapBoth(_ => ApiError.MissingMandatoryField("compareAndSet"), CasUnique.apply)
 
   def extractMetaFlags: ZIO[Any, ApiError, String] =
     ZIO.fromOption(metaFlags).mapError(_ => ApiError.MissingMandatoryField("metaFlags"))

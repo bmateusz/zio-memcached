@@ -68,7 +68,7 @@ lazy val benchmarks =
         "dev.zio"           %% "zio-schema-protobuf" % "0.2.1"
       )
     )
-*/
+ */
 lazy val example =
   project
     .in(file("example"))
@@ -85,7 +85,7 @@ lazy val example =
         "dev.zio"                       %% "zio-schema-protobuf"           % "0.2.1",
         "dev.zio"                       %% "zio-json"                      % "0.3.0-RC11",
         "io.d11"                        %% "zhttp"                         % "2.0.0-RC10",
-        "org.slf4j" % "slf4j-simple" % "2.0.3"
+        "org.slf4j"                      % "slf4j-simple"                  % "2.0.3"
       )
     )
 

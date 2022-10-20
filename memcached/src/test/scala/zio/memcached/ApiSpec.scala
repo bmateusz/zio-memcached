@@ -3,14 +3,13 @@ package zio.memcached
 import zio._
 import zio.test.TestAspect._
 
-object ApiSpec
-    extends StorageSpec {
+object ApiSpec extends StorageSpec {
 
   def spec =
     suite("Memcached commands")(
       suite("Live Executor")(
-        stringsSuite,
-      ).provideCustomLayerShared(LiveLayer) @@ sequential @@ withLiveEnvironment,
+        stringsSuite
+      ).provideCustomLayerShared(LiveLayer) @@ sequential @@ withLiveEnvironment
       // suite("Test Executor")(
       //   listSuite,
       //   stringsSuite

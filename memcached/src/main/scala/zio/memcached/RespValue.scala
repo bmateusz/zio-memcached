@@ -84,13 +84,13 @@ object RespValue {
   private[memcached] def decode(bytes: Chunk[Byte]): String = new String(bytes.toArray, StandardCharsets.UTF_8)
 
   private object internal {
-    final val CrLf: Chunk[Byte] = Chunk('\r', '\n')
-    final val CrLfString: String = "\r\n"
-    final val ValueRegex: Regex = "^VALUE (\\S+) (\\d+) (\\d+) ?(\\d+)?$".r
+    final val CrLf: Chunk[Byte]     = Chunk('\r', '\n')
+    final val CrLfString: String    = "\r\n"
+    final val ValueRegex: Regex     = "^VALUE (\\S+) (\\d+) (\\d+) ?(\\d+)?$".r
     final val MetaValueRegex: Regex = "^([a-zA-Z]{2})\\s?(\\d+)?\\s?(.+)*$".r
-    final val ErrorRegex: Regex = "^(?:CLIENT_|SERVER_)?ERROR.*$".r
-    final val NumericRegex: Regex = "^\\s*(\\d+)\\s*$".r
-    final val KeyValueRegex: Regex = "^(\\S+)=(\\S+)$".r
+    final val ErrorRegex: Regex     = "^(?:CLIENT_|SERVER_)?ERROR.*$".r
+    final val NumericRegex: Regex   = "^\\s*(\\d+)\\s*$".r
+    final val KeyValueRegex: Regex  = "^(\\S+)=(\\S+)$".r
 
     sealed trait State {
       self =>
@@ -100,21 +100,21 @@ object RespValue {
       final def inProgress: Boolean =
         self match {
           case Done(_) | Failed => false
-          case _ => true
+          case _                => true
         }
 
-      final def feed(line: String): State = {
+      final def feed(line: String): State =
         self match {
           case Start =>
             line match {
-              case "" => Start
-              case "END" => Done(End)
-              case "STORED" => Done(Stored)
+              case ""           => Start
+              case "END"        => Done(End)
+              case "STORED"     => Done(Stored)
               case "NOT_STORED" => Done(NotStored)
-              case "EXISTS" => Done(Exists)
-              case "NOT_FOUND" => Done(NotFound)
-              case "TOUCHED" => Done(Touched)
-              case "DELETED" => Done(Deleted)
+              case "EXISTS"     => Done(Exists)
+              case "NOT_FOUND"  => Done(NotFound)
+              case "TOUCHED"    => Done(Touched)
+              case "DELETED"    => Done(Deleted)
               case ValueRegex(key, flags, bytes, cas) =>
                 val header = valueHeader(key, flags, bytes, cas)
                 CollectingValue(bytes.toInt, new mutable.StringBuilder(), Chunk(header), Chunk.empty)
@@ -149,15 +149,20 @@ object RespValue {
             if (rem == 0) {
               if (line == "END") {
                 collectedHeaders.zip(collectedValues) match {
-                  case Chunk() => Failed
+                  case Chunk()      => Failed
                   case Chunk(value) => Done(BulkStringWithHeader.tupled(value))
-                  case values => Done(Array(values.map(BulkStringWithHeader.tupled)))
+                  case values       => Done(Array(values.map(BulkStringWithHeader.tupled)))
                 }
               } else {
                 line match {
                   case ValueRegex(key, flags, bytes, cas) =>
                     val header = valueHeader(key, flags, bytes, cas)
-                    CollectingValue(bytes.toInt, new mutable.StringBuilder(), collectedHeaders :+ header, collectedValues)
+                    CollectingValue(
+                      bytes.toInt,
+                      new mutable.StringBuilder(),
+                      collectedHeaders :+ header,
+                      collectedValues
+                    )
                   case _ =>
                     Failed
                 }
@@ -182,14 +187,19 @@ object RespValue {
           case CollectingMetaValue(rem, stringBuilder, header) =>
             if (line.length >= rem) {
               val stringValue = stringBuilder.append(line.substring(0, rem)).toString
-              Done(MetaResult(Exists, header, Some(BulkString(Chunk.fromArray(stringValue.getBytes(StandardCharsets.UTF_8))))))
+              Done(
+                MetaResult(
+                  Exists,
+                  header,
+                  Some(BulkString(Chunk.fromArray(stringValue.getBytes(StandardCharsets.UTF_8))))
+                )
+              )
             } else {
               CollectingMetaValue(rem - line.length - 2, stringBuilder.append(line).append(CrLfString), header)
             }
 
           case _ => Failed
         }
-      }
     }
 
     object State {
@@ -197,14 +207,15 @@ object RespValue {
 
       case object Failed extends State
 
-      final case class CollectingValue(rem: Int,
-                                       stringBuilder: mutable.StringBuilder,
-                                       collectedHeaders: Chunk[GenericValueHeader],
-                                       collectedValues: Chunk[BulkString]) extends State
+      final case class CollectingValue(
+        rem: Int,
+        stringBuilder: mutable.StringBuilder,
+        collectedHeaders: Chunk[GenericValueHeader],
+        collectedValues: Chunk[BulkString]
+      ) extends State
 
-      final case class CollectingMetaValue(rem: Int,
-                                           stringBuilder: mutable.StringBuilder,
-                                           header: MetaValueHeader) extends State
+      final case class CollectingMetaValue(rem: Int, stringBuilder: mutable.StringBuilder, header: MetaValueHeader)
+          extends State
 
       final case class Done(value: RespValue) extends State
     }
@@ -229,29 +240,30 @@ object RespValue {
       if (neg) -res else res
     }
 
-    private def parseMetaHeader(string: String): MetaValueHeader = {
+    private def parseMetaHeader(string: String): MetaValueHeader =
       if (string == null) {
         Map.empty
       } else {
-        string.split(" ").map { flag =>
-          val key = flag.charAt(0)
-          val value = flag.substring(1)
-          key -> value
-        }.toMap
+        string
+          .split(" ")
+          .map { flag =>
+            val key   = flag.charAt(0)
+            val value = flag.substring(1)
+            key -> value
+          }
+          .toMap
       }
-    }
 
-    private def parseMetaDebugHeader(string: String): Map[String, String] = {
+    private def parseMetaDebugHeader(string: String): Map[String, String] =
       if (string == null) {
         Map.empty
       } else {
         val flags = string.split(" ")
         flags.map {
-          case KeyValueRegex(key, value) => key -> value
-          case other => "key" -> other // the first value in the output is the key
+          case KeyValueRegex(key, value) => key   -> value
+          case other                     => "key" -> other // the first value in the output is the key
         }.toMap
       }
-    }
   }
 
 }

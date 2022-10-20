@@ -63,7 +63,10 @@ object Output {
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Option[(CasUnique, A)] =
       respValue match {
         case RespValue.End => None
-        case RespValue.BulkStringWithHeader(ValueHeaderWithCas(_, _, _, casUnique: CasUnique), RespValue.BulkString(s)) =>
+        case RespValue.BulkStringWithHeader(
+              ValueHeaderWithCas(_, _, _, casUnique: CasUnique),
+              RespValue.BulkString(s)
+            ) =>
           codec.decode(schema)(s).fold(e => throw CodecError(e), Some(_)).map((casUnique, _))
         case other => throw ProtocolError(s"$other isn't a SingleGetWithCasOutput")
       }
@@ -72,28 +75,28 @@ object Output {
   final object TouchOutput extends Output[Boolean] {
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Boolean =
       respValue match {
-        case RespValue.Touched => true
+        case RespValue.Touched  => true
         case RespValue.NotFound => false
-        case other => throw ProtocolError(s"$other isn't a TouchOutput")
+        case other              => throw ProtocolError(s"$other isn't a TouchOutput")
       }
   }
 
   case object SetOutput extends Output[Boolean] {
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Boolean =
       respValue match {
-        case RespValue.Stored => true
+        case RespValue.Stored    => true
         case RespValue.NotStored => false
-        case other => throw ProtocolError(s"$other isn't a SetOutput")
+        case other               => throw ProtocolError(s"$other isn't a SetOutput")
       }
   }
 
   case object UpdateResultOutput extends Output[UpdateResult] {
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): UpdateResult =
       respValue match {
-        case RespValue.Stored => Updated
-        case RespValue.Exists => Exists
+        case RespValue.Stored   => Updated
+        case RespValue.Exists   => Exists
         case RespValue.NotFound => NotFound
-        case other => throw ProtocolError(s"$other isn't a SetOutput")
+        case other              => throw ProtocolError(s"$other isn't a SetOutput")
       }
   }
 
@@ -101,16 +104,16 @@ object Output {
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Long =
       respValue match {
         case RespValue.Numeric(i) => i
-        case other => throw ProtocolError(s"$other isn't a NumericOutput")
+        case other                => throw ProtocolError(s"$other isn't a NumericOutput")
       }
   }
 
   case object DeleteOutput extends Output[Boolean] {
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Boolean =
       respValue match {
-        case RespValue.Deleted => true
+        case RespValue.Deleted  => true
         case RespValue.NotFound => false
-        case other => throw ProtocolError(s"$other isn't a DeleteOutput")
+        case other              => throw ProtocolError(s"$other isn't a DeleteOutput")
       }
   }
 
@@ -180,6 +183,5 @@ object Output {
         case other => throw ProtocolError(s"$other isn't a MetaDebugOutput")
       }
   }
-
 
 }

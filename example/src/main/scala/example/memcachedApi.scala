@@ -108,8 +108,9 @@ final case class MemcachedApiLive(r: Memcached, s: Sttp) extends MemcachedApi {
       _ => ZIO.fail(ApiError.CorruptedData),
       {
         case Some(s) => ZIO.succeed(s.toString)
-        case None => ZIO.fail(ApiError.CacheMiss)
-      })
+        case None    => ZIO.fail(ApiError.CacheMiss)
+      }
+    )
 }
 
 object MemcachedApiLive {

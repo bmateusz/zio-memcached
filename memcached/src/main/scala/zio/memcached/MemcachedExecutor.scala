@@ -31,7 +31,10 @@ object MemcachedExecutor {
 
   // lazy val test: ULayer[MemcachedExecutor] = TestExecutor.layer
 
-  private[this] final case class Request(command: Chunk[RespValue.BulkString], promise: Promise[MemcachedError, RespValue])
+  private[this] final case class Request(
+    command: Chunk[RespValue.BulkString],
+    promise: Promise[MemcachedError, RespValue]
+  )
 
   private[this] final val True: Any => Boolean = _ => true
 

@@ -34,18 +34,18 @@ sealed trait Input[-A] {
 object Input {
 
   private[memcached] val EmptyChunk: Chunk[Byte] = Chunk.empty
-  private[memcached] val WhitespaceChunk = Chunk.fromArray(" ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val GetWsChunk = Chunk.fromArray("get ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val GetsWsChunk = Chunk.fromArray("gets ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val TouchWsChunk = Chunk.fromArray("touch ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val GatWsChunk = Chunk.fromArray("gat ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val GatsWsChunk = Chunk.fromArray("gats ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val DeleteWsChunk = Chunk.fromArray("delete ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val MgWsChunk = Chunk.fromArray("mg ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val MsWsChunk = Chunk.fromArray("ms ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val MdWsChunk = Chunk.fromArray("md ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val MaWsChunk = Chunk.fromArray("ma ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val MeWsChunk = Chunk.fromArray("me ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val WhitespaceChunk         = Chunk.fromArray(" ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val GetWsChunk              = Chunk.fromArray("get ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val GetsWsChunk             = Chunk.fromArray("gets ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val TouchWsChunk            = Chunk.fromArray("touch ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val GatWsChunk              = Chunk.fromArray("gat ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val GatsWsChunk             = Chunk.fromArray("gats ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val DeleteWsChunk           = Chunk.fromArray("delete ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val MgWsChunk               = Chunk.fromArray("mg ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val MsWsChunk               = Chunk.fromArray("ms ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val MdWsChunk               = Chunk.fromArray("md ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val MaWsChunk               = Chunk.fromArray("ma ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val MeWsChunk               = Chunk.fromArray("me ".getBytes(StandardCharsets.US_ASCII))
 
   def apply[A](implicit input: Input[A]): Input[A] = input
 
@@ -81,24 +81,42 @@ object Input {
   final object TouchCommand extends Input[(String, Duration)] {
     def encode(data: (String, Duration))(implicit codec: Codec): Chunk[BulkString] = {
       val (key, expireTime) = data
-      val expireSeconds = durationToSeconds(expireTime)
-      Chunk.single(BulkString(TouchWsChunk ++ key.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++ expireSeconds.toString.getBytes(StandardCharsets.US_ASCII)))
+      val expireSeconds     = durationToSeconds(expireTime)
+      Chunk.single(
+        BulkString(
+          TouchWsChunk ++ key.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++ expireSeconds.toString.getBytes(
+            StandardCharsets.US_ASCII
+          )
+        )
+      )
     }
   }
 
   final object GatCommand extends Input[(String, Duration)] {
     def encode(data: (String, Duration))(implicit codec: Codec): Chunk[BulkString] = {
       val (key, expireTime) = data
-      val expireSeconds = durationToSeconds(expireTime)
-      Chunk.single(BulkString(GatWsChunk ++ expireSeconds.toString.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++ key.getBytes(StandardCharsets.US_ASCII)))
+      val expireSeconds     = durationToSeconds(expireTime)
+      Chunk.single(
+        BulkString(
+          GatWsChunk ++ expireSeconds.toString.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++ key.getBytes(
+            StandardCharsets.US_ASCII
+          )
+        )
+      )
     }
   }
 
   final object GatsCommand extends Input[(String, Duration)] {
     def encode(data: (String, Duration))(implicit codec: Codec): Chunk[BulkString] = {
       val (key, expireTime) = data
-      val expireSeconds = durationToSeconds(expireTime)
-      Chunk.single(BulkString(GatsWsChunk ++ expireSeconds.toString.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++ key.getBytes(StandardCharsets.US_ASCII)))
+      val expireSeconds     = durationToSeconds(expireTime)
+      Chunk.single(
+        BulkString(
+          GatsWsChunk ++ expireSeconds.toString.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++ key.getBytes(
+            StandardCharsets.US_ASCII
+          )
+        )
+      )
     }
   }
 
@@ -107,8 +125,8 @@ object Input {
 
     def encode(data: (String, A, Option[Duration]))(implicit codec: Codec): Chunk[BulkString] = {
       val (key, value, expireTime) = data
-      val expireSeconds = expireTime.map(durationToSeconds).getOrElse(0L)
-      val encodedValue = encodeBytes(value)
+      val expireSeconds            = expireTime.map(durationToSeconds).getOrElse(0L)
+      val encodedValue             = encodeBytes(value)
       Chunk(encodeBytes(s"$operation $key 0 $expireSeconds ${encodedValue.length}"), encodedValue)
     }
   }
@@ -138,7 +156,7 @@ object Input {
       val (key, value, casUnique, expireTime) = data
       val expireSeconds = expireTime match {
         case Some(value: Duration) => value.getSeconds
-        case None => 0L
+        case None                  => 0L
       }
       val encodedValue = encodeBytes(value)
       Chunk(encodeBytes(s"cas $key 0 $expireSeconds ${encodedValue.length} ${casUnique.value}"), encodedValue)
@@ -174,10 +192,12 @@ object Input {
   final class MetaSetCommand[A: Schema]() extends Input[(String, A, MetaSetFlags)] {
     def encode(data: (String, A, MetaSetFlags))(implicit codec: Codec): Chunk[BulkString] = {
       val (key, value, flags) = data
-      val encodedValue = encodeBytes(value)
-      val valueLength = encodedValue.length.toString.getBytes(StandardCharsets.US_ASCII)
+      val encodedValue        = encodeBytes(value)
+      val valueLength         = encodedValue.length.toString.getBytes(StandardCharsets.US_ASCII)
       Chunk(
-        BulkString(MsWsChunk ++ key.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++ valueLength ++ flags.encoded),
+        BulkString(
+          MsWsChunk ++ key.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++ valueLength ++ flags.encoded
+        ),
         encodedValue
       )
     }
