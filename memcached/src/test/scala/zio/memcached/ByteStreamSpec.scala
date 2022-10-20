@@ -12,10 +12,10 @@ object ByteStreamSpec extends BaseSpec {
       test("can write and read") {
         for {
           stream <- ZIO.service[ByteStream]
-          data    = Chunk.fromArray("*2\r\n$7\r\nCOMMAND\r\n$4\r\nINFO\r\n$3\r\nGET\r\n".getBytes(StandardCharsets.UTF_8))
+          data    = Chunk.fromArray("mn\r\n".getBytes(StandardCharsets.US_ASCII))
           _      <- stream.write(data)
-          res    <- stream.read.runHead
-        } yield assert(res)(isSome(equalTo('*'.toByte)))
+          res    <- stream.read.take(4).runCollect
+        } yield assert(res)(equalTo(Chunk.fromArray("MN\r\n".getBytes(StandardCharsets.US_ASCII))))
       }
     ).provideLayer(ByteStream.default)
 }
