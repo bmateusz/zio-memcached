@@ -4,7 +4,7 @@ import zio.test.Assertion.{exists => _, _}
 import zio.test._
 
 trait StorageSpec extends BaseSpec {
-  def stringsSuite: Spec[Memcached with TestEnvironment, MemcachedError] =
+  def stringsSuite: Spec[Memcached, MemcachedError] =
     suite("strings")(
       suite("get")(
         test("non-emtpy string") {

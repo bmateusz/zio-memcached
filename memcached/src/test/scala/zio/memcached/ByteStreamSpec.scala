@@ -7,7 +7,7 @@ import zio.test._
 import java.nio.charset.StandardCharsets
 
 object ByteStreamSpec extends BaseSpec {
-  def spec: Spec[TestEnvironment, Throwable] =
+  def spec: Spec[Any, Throwable] =
     suite("Byte stream")(
       test("can write and read") {
         for {
@@ -17,5 +17,5 @@ object ByteStreamSpec extends BaseSpec {
           res    <- stream.read.runHead
         } yield assert(res)(isSome(equalTo('*'.toByte)))
       }
-    ).provideCustomLayer(ByteStream.default)
+    ).provideLayer(ByteStream.default)
 }

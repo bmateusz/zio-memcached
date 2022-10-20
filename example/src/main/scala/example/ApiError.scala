@@ -29,7 +29,7 @@ sealed trait ApiError extends NoStackTrace { self =>
       case CacheMiss                         => Response.text("Cache miss").setStatus(Status.NotFound)
       case CommandNotFound                   => Response.text("Command not found").setStatus(Status.NotFound)
       case MissingMandatoryField(field)      => Response.text(s"Missing mandatory field: $field").setStatus(Status.NotFound)
-      case UnknownProject(path)              => Response.fromHttpError(HttpError.NotFound(Path.root / path))
+      case UnknownProject(path)              => Response.fromHttpError(HttpError.NotFound(path))
     }
 }
 

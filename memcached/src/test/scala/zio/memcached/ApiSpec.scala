@@ -9,7 +9,7 @@ object ApiSpec extends StorageSpec {
     suite("Memcached commands")(
       suite("Live Executor")(
         stringsSuite
-      ).provideCustomLayerShared(LiveLayer) @@ sequential @@ withLiveEnvironment
+      ).provideLayerShared(LiveLayer) @@ sequential @@ withLiveEnvironment
       // suite("Test Executor")(
       //   listSuite,
       //   stringsSuite

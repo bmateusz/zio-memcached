@@ -41,12 +41,12 @@ lazy val memcached =
     .settings(stdSettings("zio-memcached"))
     .settings(
       libraryDependencies ++= List(
-        "dev.zio"                %% "zio-streams"             % "2.0.1",
-        "dev.zio"                %% "zio-logging"             % "2.1.1",
+        "dev.zio"                %% "zio-streams"             % "2.0.2",
+        "dev.zio"                %% "zio-logging"             % "2.1.2",
         "dev.zio"                %% "zio-schema"              % "0.2.1",
         "dev.zio"                %% "zio-schema-protobuf"     % "0.2.1" % Test,
-        "dev.zio"                %% "zio-test"                % "2.0.1" % Test,
-        "dev.zio"                %% "zio-test-sbt"            % "2.0.1" % Test,
+        "dev.zio"                %% "zio-test"                % "2.0.2" % Test,
+        "dev.zio"                %% "zio-test-sbt"            % "2.0.2" % Test,
         "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.1"
       ),
       testFrameworks := List(new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -77,14 +77,12 @@ lazy val example =
     .settings(
       publish / skip := true,
       libraryDependencies ++= List(
-        "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio" % "3.7.6",
-        "com.softwaremill.sttp.client3" %% "zio-json"                      % "3.7.6",
-        "dev.zio"                       %% "zio-streams"                   % "2.0.1",
+        "dev.zio"                       %% "zio-streams"                   % "2.0.2",
         "dev.zio"                       %% "zio-config-magnolia"           % "3.0.2",
         "dev.zio"                       %% "zio-config-typesafe"           % "3.0.2",
         "dev.zio"                       %% "zio-schema-protobuf"           % "0.2.1",
         "dev.zio"                       %% "zio-json"                      % "0.3.0-RC11",
-        "io.d11"                        %% "zhttp"                         % "2.0.0-RC10",
+        "io.d11"                        %% "zhttp"                         % "2.0.0-RC11",
         "org.slf4j"                      % "slf4j-simple"                  % "2.0.3"
       )
     )

@@ -14,14 +14,6 @@ import zio.memcached.{Memcached, MemcachedCommand, MemcachedError}
 import zio.schema.Schema
 
 trait Meta {
-  val command = "mg "
-
-  /*
-  mg foo c f h k l Oopaque s t v
-  VA 2 c1 f0 h1 kfoo l0 Oopaque s2 t-1
-  aa
-   */
-
   def metaGet[R: Schema](key: String, flags: MetaGetFlag*): ZIO[Memcached, MemcachedError, MetaGetResult[R]] =
     metaGet(key, MetaGetFlags(flags))
 

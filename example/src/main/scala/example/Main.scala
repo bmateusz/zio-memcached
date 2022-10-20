@@ -18,7 +18,6 @@ package example
 
 import example.api.Api
 import example.config.AppConfig
-import sttp.client3.asynchttpclient.zio.AsyncHttpClientZioBackend
 import zhttp.service.Server
 import zio._
 import zio.memcached.{MemcachedExecutor, MemcachedLive}
@@ -30,8 +29,6 @@ object Main extends ZIOAppDefault {
       .start(9000, Api.routes)
       .provide(
         AppConfig.layer,
-        AsyncHttpClientZioBackend.layer(),
-        ContributorsCacheLive.layer,
         MemcachedApiLive.layer,
         MemcachedExecutor.layer,
         MemcachedLive.layer,

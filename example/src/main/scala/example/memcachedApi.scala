@@ -26,7 +26,7 @@ trait MemcachedApi {
   def executeCommand(command: String, body: MemcachedRequest): ZIO[Memcached, ApiError, String]
 }
 
-final case class MemcachedApiLive(r: Memcached, s: Sttp) extends MemcachedApi {
+final case class MemcachedApiLive(r: Memcached) extends MemcachedApi {
   def executeCommand(command: String, body: MemcachedRequest): ZIO[Memcached, ApiError, String] =
     command match {
       case "set" =>
@@ -114,6 +114,6 @@ final case class MemcachedApiLive(r: Memcached, s: Sttp) extends MemcachedApi {
 }
 
 object MemcachedApiLive {
-  lazy val layer: URLayer[Memcached with Sttp, MemcachedApi] =
+  lazy val layer: URLayer[Memcached, MemcachedApi] =
     ZLayer.fromFunction(MemcachedApiLive.apply _)
 }

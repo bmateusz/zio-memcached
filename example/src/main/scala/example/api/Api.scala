@@ -24,22 +24,11 @@ import zio.memcached.Memcached
 import zio.stream.ZStream
 
 object Api {
-  // Read the file as ZStream
-  // val content = HttpData.fromStream(ZStream.fromFile("example/src/main/resources/index.html")) {
-  // val indexFromResource = HttpData.fromStream(ZStream.fromResource("index.html"))
-
-  val contributors: HttpApp[ContributorsCache, Nothing] =
-    Http.collectZIO { case Method.GET -> !! / "repositories" / owner / name / "contributors" =>
-      ZIO
-        .serviceWithZIO[ContributorsCache](_.fetchAll(Repository(Owner(owner), Name(name))))
-        .mapBoth(_.toResponse, r => Response.json(r.toJson))
-        .merge
-    }
-
   val memcachedApi: HttpApp[Memcached with MemcachedApi, Throwable] =
     Http.collectZIO { case req @ Method.POST -> !! / "memcached" / command =>
-      req.bodyAsString.flatMap { body => // TODO Handle Task[String] and get rid of Throwable error type
-        body.fromJson[MemcachedRequest] match {
+      req.body.asString
+        .map(_.fromJson[MemcachedRequest])
+        .flatMap {
           case Left(value) =>
             ZIO.succeed(Response.text(s"Bad input $value").setStatus(Status.BadRequest))
           case Right(body) =>
@@ -48,7 +37,6 @@ object Api {
               .mapBoth(_.toResponse, r => Response.text(r))
               .merge
         }
-      }
     }
 
   val static: UHttpApp =
@@ -56,7 +44,7 @@ object Api {
       Http.fromStream(ZStream.fromResource("index.html"))
     }
 
-  val routes: HttpApp[ContributorsCache with Memcached with MemcachedApi, Throwable] =
-    memcachedApi ++ contributors ++ static
+  val routes: HttpApp[Memcached with MemcachedApi, Throwable] =
+    memcachedApi ++ static
 
 }

@@ -96,7 +96,7 @@ object Output {
         case RespValue.Stored   => Updated
         case RespValue.Exists   => Exists
         case RespValue.NotFound => NotFound
-        case other              => throw ProtocolError(s"$other isn't a SetOutput")
+        case other              => throw ProtocolError(s"$other isn't a UpdateResultOutput")
       }
   }
 
