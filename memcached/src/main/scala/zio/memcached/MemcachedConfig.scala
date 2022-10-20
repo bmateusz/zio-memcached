@@ -19,5 +19,5 @@ package zio.memcached
 final case class MemcachedConfig(host: String, port: Int)
 
 object MemcachedConfig {
-  lazy val Default: MemcachedConfig = MemcachedConfig("localhost", 6379)
+  lazy val Default: MemcachedConfig = MemcachedConfig("localhost", 11211)
 }

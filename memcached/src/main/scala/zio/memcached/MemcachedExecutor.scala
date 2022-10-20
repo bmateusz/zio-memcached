@@ -29,7 +29,7 @@ object MemcachedExecutor {
   lazy val local: ZLayer[Any, MemcachedError.IOError, MemcachedExecutor] =
     ByteStream.default >>> StreamedExecutor
 
-  lazy val test: ULayer[MemcachedExecutor] = TestExecutor.layer
+  // lazy val test: ULayer[MemcachedExecutor] = TestExecutor.layer
 
   private[this] final case class Request(command: Chunk[RespValue.BulkString], promise: Promise[MemcachedError, RespValue])
 
@@ -78,14 +78,16 @@ object MemcachedExecutor {
 
         while (it.hasNext) {
           val req = it.next()
-          buffer ++= RespValue.Array(req.command).serialize
+          req.command.foreach { chunk =>
+            buffer ++= chunk.serialize
+          }
         }
 
         val bytes = buffer.result()
 
         byteStream
           .write(bytes)
-          .mapError(MemcachedError.IOError(_))
+          .mapError(MemcachedError.IOError)
           .tapBoth(
             e => ZIO.foreachDiscard(reqs)(_.promise.fail(e)),
             _ => ZIO.foreachDiscard(reqs)(req => resQueue.offer(req.promise))
@@ -94,7 +96,7 @@ object MemcachedExecutor {
 
     private def receive: IO[MemcachedError, Unit] =
       byteStream.read
-        .mapError(MemcachedError.IOError(_))
+        .mapError(MemcachedError.IOError)
         .via(RespValue.decoder)
         .collectSome
         .foreach(response => resQueue.take.flatMap(_.succeed(response)))

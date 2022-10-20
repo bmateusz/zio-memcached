@@ -32,6 +32,7 @@ object Main extends ZIOAppDefault {
         AppConfig.layer,
         AsyncHttpClientZioBackend.layer(),
         ContributorsCacheLive.layer,
+        MemcachedApiLive.layer,
         MemcachedExecutor.layer,
         MemcachedLive.layer,
         ZLayer.succeed[Codec](ProtobufCodec)

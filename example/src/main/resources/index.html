@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><title>ZIO Memcached</title>
+  <style>
+    body {
+      font-family: monospace;
+      font-size: 16px;
+      background-color: #edede0;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      font-size: 1.5em;
+      padding: 0.5em 1em;
+      margin: 0.1em
+    }
+
+    button {
+      font-size: 1.5em;
+      padding: 0.5em 1em;
+      margin: 0.4em;
+      background: #f0f0f0;
+    }
+
+    label {
+      margin: 0.3em;
+    }
+
+    #example {
+      font-family: monospace;
+      padding: 0.1em 0.3em;
+      margin: 0.1em;
+      background-color: #f5f5f5;
+      border: 1px solid #e5e5e5;
+    }
+  </style>
+</head>
+<body>
+<div style="margin:auto;padding:2em 4em;max-width:80%"><h1>ZIO Memcached</h1>
+  <label for="command">Command</label>
+  <select id="command">
+    <option value="set">set</option>
+    <option value="get">get</option>
+    <option value="getWithCas">getWithCas</option>
+    <option value="touch">touch</option>
+    <option value="getAndTouch">getAndTouch</option>
+    <option value="getAndTouchWithCas">getAndTouchWithCas</option>
+    <option value="delete">delete</option>
+    <option value="increase">increase</option>
+    <option value="add">add</option>
+    <option value="append">append</option>
+    <option value="prepend">prepend</option>
+    <option value="replace">replace</option>
+    <option value="compareAndSet">compareAndSet</option>
+    <option value="metaGet">metaGet</option>
+    <option value="metaSet">metaSet</option>
+    <option value="metaDelete">metaDelete</option>
+    <option value="metaArithmetic">metaArithmetic</option>
+    <option value="metaDebug">metaDebug</option>
+  </select>
+  <label for="key">Key</label><input type="text" id="key" placeholder="key" value="foo">
+  <label for="value">Value</label><textarea id="value" placeholder="value">bar</textarea>
+  <label for="ttl">TTL</label><input type="text" id="ttl" placeholder="time to live in seconds">
+  <label for="compareAndSet">CAS</label><input type="text" id="compareAndSet" placeholder="unique CAS value" disabled>
+  <label for="metaFlags">Meta Flags, see: <a href="https://raw.githubusercontent.com/memcached/memcached/master/doc/protocol.txt">memcached/protocol.txt</a><span id="exampleWithLabel" style="display: none"> , example: <span id="example"></span></span></label><input type="text" id="metaFlags" placeholder="meta flags" disabled>
+  <button id="send">Send</button>
+  <h2>Result</h2>
+  <div id="result" style="padding:1em; background-color: #f5f5f5; border: 1px solid #ccc"></div>
+  <script>
+    const command = document.getElementById('command');
+    const key = document.getElementById('key');
+    const value = document.getElementById('value');
+    const ttl = document.getElementById('ttl');
+    const result = document.getElementById('result');
+    const compareAndSet = document.getElementById('compareAndSet');
+    const metaFlags = document.getElementById('metaFlags');
+    const example = document.getElementById('example');
+    const exampleWithLabel = document.getElementById('exampleWithLabel');
+    const sendButton = document.getElementById('send');
+
+    const send = (method, url, body) => {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open(method, url);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = () => resolve(xhr.responseText);
+        xhr.onerror = () => reject(xhr.statusText);
+        xhr.send(body);
+      });
+    };
+
+    constructPayload = () => {
+      const payload = {
+        key: key.value,
+      };
+      if (!value.disabled) {
+        payload.value = value.value;
+      }
+      if (!ttl.disabled) {
+        payload.ttl = ttl.value;
+      }
+      if (!compareAndSet.disabled) {
+        payload.cas = compareAndSet.value;
+      }
+      if (!metaFlags.disabled) {
+        payload.metaFlags = metaFlags.value;
+      }
+      return payload;
+    }
+
+    const handler = () => {
+      const cmd = command.value;
+      send('POST', '/memcached/' + cmd, JSON.stringify(constructPayload()))
+          .then(response => result.innerHTML = response)
+          .catch(error => result.innerHTML = error);
+    };
+
+    const commandChangeHandler = () => {
+      const cmd = command.value;
+      compareAndSet.disabled = true;
+      metaFlags.disabled = !cmd.startsWith('meta');
+      if (cmd.startsWith('getAndTouch') || cmd === 'touch') {
+        value.disabled = true;
+        ttl.disabled = false;
+      } else if (cmd === 'increase' || cmd === 'metaSet') {
+        value.disabled = false;
+        ttl.disabled = true;
+      } else if (cmd.startsWith('get') || cmd === 'delete' || cmd.startsWith('meta')) {
+        value.disabled = true;
+        ttl.disabled = true;
+      } else {
+        value.disabled = false;
+        ttl.disabled = false;
+        if (cmd === 'compareAndSet') {
+          compareAndSet.disabled = false;
+        }
+      }
+
+      // set meta flags example
+      if (cmd === 'metaGet') {
+        example.innerHTML = 'c f h k l Oopaque s t v'
+      } else if (cmd === 'metaSet') {
+        example.innerHTML = 'c k MS Oopaque F12 T300'
+      } else if (cmd === 'metaDelete') {
+        example.innerHTML = 'I k Oopaque T300'
+      } else if (cmd === 'metaArithmetic') {
+        example.innerHTML = 't c k N300 J500 D2 Oopaque MI v'
+      } else if (cmd === 'metaDebug') {
+        example.innerHTML = 'b'
+      } else {
+        example.innerHTML = ''
+      }
+      exampleWithLabel.style.display = example.innerHTML ? 'inline' : 'none';
+    };
+
+    sendButton.addEventListener('click', handler);
+    command.addEventListener('change', commandChangeHandler);
+    example.addEventListener('click', () => metaFlags.value = example.innerHTML);
+  </script>
+</div>
+</body>
+</html>

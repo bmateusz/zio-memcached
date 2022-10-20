@@ -16,12 +16,6 @@ trait BaseSpec extends ZIOSpecDefault {
 
   def instantOf(millis: Long): UIO[Instant] = ZIO.succeed(Instant.now().plusMillis(millis))
 
-  final val genStringMemcachedTypeOption: Gen[Any, Option[MemcachedType]] =
-    Gen.option(Gen.constSample(Sample.noShrink(MemcachedType.String)))
-
-  final val genCountOption: Gen[Any, Option[Count]] =
-    Gen.option(Gen.long(0, 100000).map(Count(_)))
-
   final val genPatternOption: Gen[Any, Option[String]] =
     Gen.option(Gen.constSample(Sample.noShrink("*")))
 

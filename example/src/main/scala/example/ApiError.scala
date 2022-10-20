@@ -26,14 +26,18 @@ sealed trait ApiError extends NoStackTrace { self =>
   final def toResponse: Response =
     self match {
       case CorruptedData | GithubUnreachable => Response.fromHttpError(HttpError.InternalServerError())
-      case CacheMiss(key)                    => Response.fromHttpError(HttpError.NotFound(Path.empty / key))
+      case CacheMiss                         => Response.text("Cache miss").setStatus(Status.NotFound)
+      case CommandNotFound                   => Response.text("Command not found").setStatus(Status.NotFound)
+      case MissingMandatoryField(field)      => Response.text(s"Missing mandatory field: $field").setStatus(Status.NotFound)
       case UnknownProject(path)              => Response.fromHttpError(HttpError.NotFound(Path.root / path))
     }
 }
 
 object ApiError {
-  final case class CacheMiss(key: String)       extends ApiError
-  case object CorruptedData                     extends ApiError
-  case object GithubUnreachable                 extends ApiError
-  final case class UnknownProject(path: String) extends ApiError
+  case object CacheMiss                           extends ApiError
+  case object CorruptedData                       extends ApiError
+  case object CommandNotFound                     extends ApiError
+  case class MissingMandatoryField(field: String) extends ApiError
+  case object GithubUnreachable                   extends ApiError
+  final case class UnknownProject(path: String)   extends ApiError
 }

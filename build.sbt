@@ -29,7 +29,8 @@ lazy val root =
   project
     .in(file("."))
     .settings(publish / skip := true)
-    .aggregate(memcached, benchmarks, example)
+    // .aggregate(memcached, benchmarks, example)
+    .aggregate(memcached, example)
 
 lazy val memcached =
   project
@@ -50,7 +51,7 @@ lazy val memcached =
       ),
       testFrameworks := List(new TestFramework("zio.test.sbt.ZTestFramework"))
     )
-
+/*
 lazy val benchmarks =
   project
     .in(file("benchmarks"))
@@ -67,7 +68,7 @@ lazy val benchmarks =
         "dev.zio"           %% "zio-schema-protobuf" % "0.2.1"
       )
     )
-
+*/
 lazy val example =
   project
     .in(file("example"))
@@ -83,7 +84,8 @@ lazy val example =
         "dev.zio"                       %% "zio-config-typesafe"           % "3.0.2",
         "dev.zio"                       %% "zio-schema-protobuf"           % "0.2.1",
         "dev.zio"                       %% "zio-json"                      % "0.3.0-RC11",
-        "io.d11"                        %% "zhttp"                         % "2.0.0-RC10"
+        "io.d11"                        %% "zhttp"                         % "2.0.0-RC10",
+        "org.slf4j" % "slf4j-simple" % "2.0.3"
       )
     )
 

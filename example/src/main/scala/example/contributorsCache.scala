@@ -40,9 +40,8 @@ final case class ContributorsCacheLive(r: Memcached, s: Sttp) extends Contributo
       .ignore
 
   private def read(repository: Repository): ZIO[Memcached, ApiError, Contributors] =
-    get(repository.key)
-      .returning[String]
-      .someOrFail(ApiError.CacheMiss(repository.key))
+    get[String](repository.key)
+      .someOrFail(ApiError.CacheMiss)
       .map(_.fromJson[Contributors])
       .foldZIO(_ => ZIO.fail(ApiError.CorruptedData), s => ZIO.succeed(s.getOrElse(Contributors(Chunk.empty))))
 

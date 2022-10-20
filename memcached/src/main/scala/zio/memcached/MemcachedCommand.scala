@@ -17,13 +17,12 @@
 package zio.memcached
 
 import zio._
-import zio.memcached.Input.{StringInput, Varargs}
 
-final class MemcachedCommand[-In, +Out] private (val name: String, val input: Input[In], val output: Output[Out]) {
+final class MemcachedCommand[-In, +Out] private (val input: Input[In], val output: Output[Out]) {
   private[memcached] def run(in: In): ZIO[Memcached, MemcachedError, Out] =
     ZIO
       .serviceWithZIO[Memcached] { memcached =>
-        val command = Varargs(StringInput).encode(name.split(" "))(memcached.codec) ++ input.encode(in)(memcached.codec)
+        val command = input.encode(in)(memcached.codec)
 
         memcached.executor
           .execute(command)
@@ -33,6 +32,9 @@ final class MemcachedCommand[-In, +Out] private (val name: String, val input: In
 }
 
 object MemcachedCommand {
-  private[memcached] def apply[In, Out](name: String, input: Input[In], output: Output[Out]): MemcachedCommand[In, Out] =
-    new MemcachedCommand(name, input, output)
+  private[memcached] def apply[In, Out](input: Input[In], output: Output[Out]): MemcachedCommand[In, Out] =
+    new MemcachedCommand(input, output)
+
+  def validateKey(key: String): Boolean =
+    key.length <= 250 && !key.exists((c: Char) => c.isControl || c.isWhitespace)
 }
