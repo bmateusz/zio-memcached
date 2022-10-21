@@ -77,13 +77,13 @@ lazy val example =
     .settings(
       publish / skip := true,
       libraryDependencies ++= List(
-        "dev.zio"                       %% "zio-streams"                   % "2.0.2",
-        "dev.zio"                       %% "zio-config-magnolia"           % "3.0.2",
-        "dev.zio"                       %% "zio-config-typesafe"           % "3.0.2",
-        "dev.zio"                       %% "zio-schema-protobuf"           % "0.2.1",
-        "dev.zio"                       %% "zio-json"                      % "0.3.0-RC11",
-        "io.d11"                        %% "zhttp"                         % "2.0.0-RC11",
-        "org.slf4j"                      % "slf4j-simple"                  % "2.0.3"
+        "dev.zio"  %% "zio-streams"         % "2.0.2",
+        "dev.zio"  %% "zio-config-magnolia" % "3.0.2",
+        "dev.zio"  %% "zio-config-typesafe" % "3.0.2",
+        "dev.zio"  %% "zio-schema-protobuf" % "0.2.1",
+        "dev.zio"  %% "zio-json"            % "0.3.0-RC11",
+        "io.d11"   %% "zhttp"               % "2.0.0-RC11",
+        "org.slf4j" % "slf4j-simple"        % "2.0.3"
       )
     )
 

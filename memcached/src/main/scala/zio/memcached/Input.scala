@@ -35,11 +35,20 @@ object Input {
 
   private[memcached] val EmptyChunk: Chunk[Byte] = Chunk.empty
   private[memcached] val WhitespaceChunk         = Chunk.fromArray(" ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val SpaceZeroSpaceChunk     = Chunk.fromArray(" 0 ".getBytes(StandardCharsets.US_ASCII))
   private[memcached] val GetWsChunk              = Chunk.fromArray("get ".getBytes(StandardCharsets.US_ASCII))
   private[memcached] val GetsWsChunk             = Chunk.fromArray("gets ".getBytes(StandardCharsets.US_ASCII))
   private[memcached] val TouchWsChunk            = Chunk.fromArray("touch ".getBytes(StandardCharsets.US_ASCII))
   private[memcached] val GatWsChunk              = Chunk.fromArray("gat ".getBytes(StandardCharsets.US_ASCII))
   private[memcached] val GatsWsChunk             = Chunk.fromArray("gats ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val SetWsChunk              = Chunk.fromArray("set ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val AddWsChunk              = Chunk.fromArray("add ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val AppendWsChunk           = Chunk.fromArray("append ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val PrependWsChunk          = Chunk.fromArray("prepend ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val ReplaceWsChunk          = Chunk.fromArray("replace ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val CasWsChunk              = Chunk.fromArray("cas ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val IncrWsChunk             = Chunk.fromArray("incr ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val DecrWsChunk             = Chunk.fromArray("decr ".getBytes(StandardCharsets.US_ASCII))
   private[memcached] val DeleteWsChunk           = Chunk.fromArray("delete ".getBytes(StandardCharsets.US_ASCII))
   private[memcached] val MgWsChunk               = Chunk.fromArray("mg ".getBytes(StandardCharsets.US_ASCII))
   private[memcached] val MsWsChunk               = Chunk.fromArray("ms ".getBytes(StandardCharsets.US_ASCII))
@@ -84,9 +93,8 @@ object Input {
       val expireSeconds     = durationToSeconds(expireTime)
       Chunk.single(
         BulkString(
-          TouchWsChunk ++ key.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++ expireSeconds.toString.getBytes(
-            StandardCharsets.US_ASCII
-          )
+          TouchWsChunk ++ key.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++
+            expireSeconds.toString.getBytes(StandardCharsets.US_ASCII)
         )
       )
     }
@@ -98,9 +106,8 @@ object Input {
       val expireSeconds     = durationToSeconds(expireTime)
       Chunk.single(
         BulkString(
-          GatWsChunk ++ expireSeconds.toString.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++ key.getBytes(
-            StandardCharsets.US_ASCII
-          )
+          GatWsChunk ++ expireSeconds.toString.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++
+            key.getBytes(StandardCharsets.US_ASCII)
         )
       )
     }
@@ -112,43 +119,49 @@ object Input {
       val expireSeconds     = durationToSeconds(expireTime)
       Chunk.single(
         BulkString(
-          GatsWsChunk ++ expireSeconds.toString.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++ key.getBytes(
-            StandardCharsets.US_ASCII
-          )
+          GatsWsChunk ++ expireSeconds.toString.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++
+            key.getBytes(StandardCharsets.US_ASCII)
         )
       )
     }
   }
 
   abstract class GenericSetCommand[A: Schema]() extends Input[(String, A, Option[Duration])] {
-    protected val operation: String
+    protected val operationWsChunk: Chunk[Byte]
 
     def encode(data: (String, A, Option[Duration]))(implicit codec: Codec): Chunk[BulkString] = {
       val (key, value, expireTime) = data
       val expireSeconds            = expireTime.map(durationToSeconds).getOrElse(0L)
       val encodedValue             = encodeBytes(value)
-      Chunk(encodeBytes(s"$operation $key 0 $expireSeconds ${encodedValue.length}"), encodedValue)
+      Chunk(
+        BulkString(
+          operationWsChunk ++ key.getBytes(StandardCharsets.US_ASCII) ++ SpaceZeroSpaceChunk ++
+            expireSeconds.toString.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++
+            encodedValue.length.toString.getBytes(StandardCharsets.US_ASCII)
+        ),
+        encodedValue
+      )
     }
   }
 
   final class SetCommand[A: Schema]() extends GenericSetCommand[A] {
-    override protected val operation = "set"
+    override protected val operationWsChunk: Chunk[Byte] = SetWsChunk
   }
 
   final class AddCommand[A: Schema]() extends GenericSetCommand[A] {
-    override protected val operation = "add"
+    override protected val operationWsChunk: Chunk[Byte] = AddWsChunk
   }
 
   final class ReplaceCommand[A: Schema]() extends GenericSetCommand[A] {
-    override protected val operation = "replace"
+    override protected val operationWsChunk: Chunk[Byte] = ReplaceWsChunk
   }
 
   final class AppendCommand[A: Schema]() extends GenericSetCommand[A] {
-    override protected val operation = "append"
+    override protected val operationWsChunk: Chunk[Byte] = AppendWsChunk
   }
 
   final class PrependCommand[A: Schema]() extends GenericSetCommand[A] {
-    override protected val operation = "prepend"
+    override protected val operationWsChunk: Chunk[Byte] = PrependWsChunk
   }
 
   final class CompareAndSetCommand[A: Schema]() extends Input[(String, A, CasUnique, Option[Duration])] {
@@ -159,21 +172,39 @@ object Input {
         case None                  => 0L
       }
       val encodedValue = encodeBytes(value)
-      Chunk(encodeBytes(s"cas $key 0 $expireSeconds ${encodedValue.length} ${casUnique.value}"), encodedValue)
+      Chunk(
+        BulkString(
+          CasWsChunk ++ key.getBytes(StandardCharsets.US_ASCII) ++ SpaceZeroSpaceChunk ++
+            expireSeconds.toString.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++
+            encodedValue.length.toString.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++
+            casUnique.value.toString.getBytes(StandardCharsets.US_ASCII)
+        ),
+        encodedValue
+      )
     }
   }
 
   final object IncreaseCommand extends Input[(String, Long)] {
     def encode(data: (String, Long))(implicit codec: Codec): Chunk[BulkString] = {
       val (key, value) = data
-      Chunk(encodeBytes(s"incr $key $value"))
+      Chunk.single(
+        BulkString(
+          IncrWsChunk ++ key.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++
+            value.toString.getBytes(StandardCharsets.US_ASCII)
+        )
+      )
     }
   }
 
   final object DecreaseCommand extends Input[(String, Long)] {
     def encode(data: (String, Long))(implicit codec: Codec): Chunk[BulkString] = {
       val (key, value) = data
-      Chunk(encodeBytes(s"decr $key $value"))
+      Chunk.single(
+        BulkString(
+          DecrWsChunk ++ key.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++
+            value.toString.getBytes(StandardCharsets.US_ASCII)
+        )
+      )
     }
   }
 
