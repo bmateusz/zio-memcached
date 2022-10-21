@@ -35,57 +35,57 @@ trait Storage {
    *   Returns the value of the string or None if it does not exist.
    */
   final def get[R: Schema](key: String): ZIO[Memcached, MemcachedError, Option[R]] =
-    MemcachedCommand(GetCommand, SingleGetOutput[R]()).run(key)
+    MemcachedCommand(new GetCommand(key), SingleGetOutput[R]()).run(())
 
   final def getWithCas[R: Schema](key: String): ZIO[Memcached, MemcachedError, Option[(CasUnique, R)]] =
-    MemcachedCommand(GetsCommand, SingleGetWithCasOutput[R]()).run(key)
+    MemcachedCommand(new GetsCommand(key), SingleGetWithCasOutput[R]()).run(())
 
   final def touch(key: String, expireTime: Duration): ZIO[Memcached, MemcachedError, Boolean] =
-    MemcachedCommand(TouchCommand, TouchOutput).run((key, expireTime))
+    MemcachedCommand(new TouchCommand(key), TouchOutput).run(expireTime)
 
   final def getAndTouch[R: Schema](key: String, expireTime: Duration): ZIO[Memcached, MemcachedError, Option[R]] =
-    MemcachedCommand(GatCommand, SingleGetOutput[R]()).run((key, expireTime))
+    MemcachedCommand(new GatCommand(key), SingleGetOutput[R]()).run(expireTime)
 
   final def getAndTouchWithCas[R: Schema](
     key: String,
     expireTime: Duration
   ): ZIO[Memcached, MemcachedError, Option[(CasUnique, R)]] =
-    MemcachedCommand(GatsCommand, SingleGetWithCasOutput[R]()).run((key, expireTime))
+    MemcachedCommand(new GatsCommand(key), SingleGetWithCasOutput[R]()).run(expireTime)
 
   final def set[V: Schema](
     key: String,
     value: V,
     expireTime: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, Boolean] =
-    MemcachedCommand(new SetCommand[V](), SetOutput).run((key, value, expireTime))
+    MemcachedCommand(new SetCommand[V](key), SetOutput).run((value, expireTime))
 
   final def add[V: Schema](
     key: String,
     value: V,
     expireTime: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, Boolean] =
-    MemcachedCommand(new AddCommand[V](), SetOutput).run((key, value, expireTime))
+    MemcachedCommand(new AddCommand[V](key), SetOutput).run((value, expireTime))
 
   final def replace[V: Schema](
     key: String,
     value: V,
     expireTime: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, Boolean] =
-    MemcachedCommand(new ReplaceCommand[V](), SetOutput).run((key, value, expireTime))
+    MemcachedCommand(new ReplaceCommand[V](key), SetOutput).run((value, expireTime))
 
   final def append[V: Schema](
     key: String,
     value: V,
     expireTime: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, Boolean] =
-    MemcachedCommand(new AppendCommand[V](), SetOutput).run((key, value, expireTime))
+    MemcachedCommand(new AppendCommand[V](key), SetOutput).run((value, expireTime))
 
   final def prepend[V: Schema](
     key: String,
     value: V,
     expireTime: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, Boolean] =
-    MemcachedCommand(new PrependCommand[V](), SetOutput).run((key, value, expireTime))
+    MemcachedCommand(new PrependCommand[V](key), SetOutput).run((value, expireTime))
 
   final def compareAndSet[V: Schema](
     key: String,
@@ -93,14 +93,14 @@ trait Storage {
     casUnique: CasUnique,
     expireTime: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, UpdateResult] =
-    MemcachedCommand(new CompareAndSetCommand[V](), UpdateResultOutput).run((key, value, casUnique, expireTime))
+    MemcachedCommand(new CompareAndSetCommand[V](key), UpdateResultOutput).run((value, casUnique, expireTime))
 
   final def increase(key: String, value: Long): ZIO[Memcached, MemcachedError, Long] =
     if (value >= 0)
-      MemcachedCommand(IncreaseCommand, NumericOutput).run((key, value))
+      MemcachedCommand(new IncreaseCommand(key), NumericOutput).run(value)
     else
-      MemcachedCommand(DecreaseCommand, NumericOutput).run((key, -value))
+      MemcachedCommand(new DecreaseCommand(key), NumericOutput).run(-value)
 
   final def delete(key: String): ZIO[Memcached, MemcachedError, Boolean] =
-    MemcachedCommand(DeleteCommand, DeleteOutput).run(key)
+    MemcachedCommand(new DeleteCommand(key), DeleteOutput).run(())
 }

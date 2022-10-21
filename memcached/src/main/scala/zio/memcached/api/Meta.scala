@@ -18,29 +18,29 @@ trait Meta {
     metaGet(key, MetaGetFlags(flags))
 
   def metaGet[R: Schema](key: String, flags: MetaGetFlags): ZIO[Memcached, MemcachedError, MetaGetResult[R]] =
-    MemcachedCommand(MetaGetCommand, MetaGetOutput[R]()).run((key, flags))
+    MemcachedCommand(new MetaGetCommand(key), MetaGetOutput[R]()).run(flags)
 
   def metaSet[R: Schema](key: String, value: R, flags: MetaSetFlag*): ZIO[Memcached, MemcachedError, MetaSetResult] =
     metaSet[R](key, value, MetaSetFlags(flags))
 
   def metaSet[R: Schema](key: String, value: R, flags: MetaSetFlags): ZIO[Memcached, MemcachedError, MetaSetResult] =
-    MemcachedCommand(new MetaSetCommand[R](), MetaSetOutput).run((key, value, flags))
+    MemcachedCommand(new MetaSetCommand[R](key), MetaSetOutput).run((value, flags))
 
   def metaDelete(key: String, flags: MetaDeleteFlag*): ZIO[Memcached, MemcachedError, MetaDeleteResult] =
     metaDelete(key, MetaDeleteFlags(flags))
 
   def metaDelete(key: String, flags: MetaDeleteFlags): ZIO[Memcached, MemcachedError, MetaDeleteResult] =
-    MemcachedCommand(MetaDeleteCommand, MetaDeleteOutput).run((key, flags))
+    MemcachedCommand(new MetaDeleteCommand(key), MetaDeleteOutput).run(flags)
 
   def metaArithmetic(key: String, flags: MetaArithmeticFlag*): ZIO[Memcached, MemcachedError, MetaArithmeticResult] =
     metaArithmetic(key, MetaArithmeticFlags(flags))
 
   def metaArithmetic(key: String, flags: MetaArithmeticFlags): ZIO[Memcached, MemcachedError, MetaArithmeticResult] =
-    MemcachedCommand(MetaArithmeticCommand, MetaArithmeticOutput).run((key, flags))
+    MemcachedCommand(new MetaArithmeticCommand(key), MetaArithmeticOutput).run(flags)
 
   def metaDebug(key: String, flags: MetaDebugFlag*): ZIO[Memcached, MemcachedError, Option[Map[String, String]]] =
     metaDebug(key, MetaDebugFlags(flags))
 
   def metaDebug(key: String, flags: MetaDebugFlags): ZIO[Memcached, MemcachedError, Option[Map[String, String]]] =
-    MemcachedCommand(MetaDebugCommand, MetaDebugOutput).run((key, flags))
+    MemcachedCommand(new MetaDebugCommand(key), MetaDebugOutput).run(flags)
 }

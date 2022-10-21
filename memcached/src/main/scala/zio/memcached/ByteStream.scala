@@ -30,15 +30,15 @@ private[memcached] trait ByteStream {
 }
 
 private[memcached] object ByteStream {
-  lazy val customized: ZLayer[MemcachedConfig, MemcachedError.IOError, ByteStream] =
+  lazy val customized: ZLayer[MemcachedConfig, MemcachedError.IOError, Chunk[ByteStream]] =
     ZLayer.scoped {
       for {
         config  <- ZIO.service[MemcachedConfig]
-        service <- connect(new InetSocketAddress(config.host, config.port))
+        service <- Chunk.from(config.nodes).mapZIO(node => connect(new InetSocketAddress(node.host, node.port)))
       } yield service
     }
 
-  lazy val default: ZLayer[Any, MemcachedError.IOError, ByteStream] =
+  lazy val default: ZLayer[Any, MemcachedError.IOError, Chunk[ByteStream]] =
     ZLayer.succeed(MemcachedConfig.Default) >>> customized
 
   private[this] final val ResponseBufferSize = 1024
@@ -56,7 +56,7 @@ private[memcached] object ByteStream {
       readBuffer  <- makeBuffer
       writeBuffer <- makeBuffer
       channel     <- openChannel(address)
-    } yield new Connection(readBuffer, writeBuffer, channel)).mapError(MemcachedError.IOError(_))
+    } yield new Connection(readBuffer, writeBuffer, channel)).mapError(MemcachedError.IOError)
 
   private[this] def completionHandler[A](k: IO[IOException, A] => Unit): CompletionHandler[A, Any] =
     new CompletionHandler[A, Any] {

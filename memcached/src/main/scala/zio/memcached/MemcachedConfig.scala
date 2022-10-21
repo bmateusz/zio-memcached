@@ -16,8 +16,18 @@
 
 package zio.memcached
 
-final case class MemcachedConfig(host: String, port: Int)
+import zio.memcached.MemcachedConfig.MemcachedNode
+
+final case class MemcachedConfig(nodes: List[MemcachedNode])
 
 object MemcachedConfig {
   lazy val Default: MemcachedConfig = MemcachedConfig("localhost", 11211)
+
+  final case class MemcachedNode(host: String, port: Int)
+
+  object MemcachedNode {
+    def apply(host: String, port: Int): MemcachedNode = new MemcachedNode(host, port)
+  }
+
+  def apply(host: String, port: Int): MemcachedConfig = new MemcachedConfig(MemcachedNode(host, port) :: Nil)
 }

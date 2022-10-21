@@ -19,7 +19,7 @@ package zio.memcached
 import zio._
 
 trait MemcachedExecutor {
-  def execute(command: Chunk[RespValue.BulkString]): IO[MemcachedError, RespValue]
+  def execute(hash: Int, command: Chunk[RespValue.BulkString]): IO[MemcachedError, RespValue]
 }
 
 object MemcachedExecutor {
@@ -40,27 +40,39 @@ object MemcachedExecutor {
 
   private[this] final val RequestQueueSize = 16
 
-  private[this] final val StreamedExecutor: ZLayer[ByteStream, Nothing, Live] =
+  private[this] final val StreamedExecutor: ZLayer[Chunk[ByteStream], Nothing, Live] =
     ZLayer.scoped {
       for {
-        byteStream <- ZIO.service[ByteStream]
-        reqQueue   <- Queue.bounded[Request](RequestQueueSize)
-        resQueue   <- Queue.unbounded[Promise[MemcachedError, RespValue]]
-        live        = new Live(reqQueue, resQueue, byteStream)
-        _          <- live.run.forkScoped
-      } yield live
+        byteStreams <- ZIO.service[Chunk[ByteStream]]
+        nodes       <- byteStreams.mapZIO(singleStreamedExecutor)
+        _           <- nodes.mapZIO(_.run.forkScoped)
+      } yield new Live(nodes)
     }
 
-  private[this] final class Live(
+  private[this] final def singleStreamedExecutor(byteStream: ByteStream) =
+    for {
+      reqQueue <- Queue.bounded[Request](RequestQueueSize)
+      resQueue <- Queue.unbounded[Promise[MemcachedError, RespValue]]
+      live      = new Node(reqQueue, resQueue, byteStream)
+    } yield live
+
+  private[this] final class Live(nodes: Chunk[Node]) extends MemcachedExecutor {
+    private val length = nodes.length
+
+    def execute(hash: Int, command: Chunk[RespValue.BulkString]): IO[MemcachedError, RespValue] =
+      Promise
+        .make[MemcachedError, RespValue]
+        .flatMap(promise => nodes(hash % length).offer(Request(command, promise)) *> promise.await)
+  }
+
+  private[this] final class Node(
     reqQueue: Queue[Request],
     resQueue: Queue[Promise[MemcachedError, RespValue]],
     byteStream: ByteStream
-  ) extends MemcachedExecutor {
+  ) {
 
-    def execute(command: Chunk[RespValue.BulkString]): IO[MemcachedError, RespValue] =
-      Promise
-        .make[MemcachedError, RespValue]
-        .flatMap(promise => reqQueue.offer(Request(command, promise)) *> promise.await)
+    def offer(request: Request): UIO[Boolean] =
+      reqQueue.offer(request)
 
     /**
      * Opens a connection to the server and launches send and receive operations. All failures are retried by opening a
