@@ -3,16 +3,12 @@ package zio.memcached.model
 import zio.memcached.MemcachedCommand.validateKey
 import zio.memcached.model.MetaArithmeticFlags.MetaArithmeticFlag
 
-import java.nio.charset.StandardCharsets
-
 object MetaArithmeticFlags {
 
   /**
    * The flags used by the 'ma' command
    */
-  sealed trait MetaArithmeticFlag {
-    def flag: String
-  }
+  sealed trait MetaArithmeticFlag extends MetaFlagBase
 
   /**
    * interpret key as base64 encoded binary value
@@ -167,14 +163,4 @@ object MetaArithmeticFlags {
     }
 }
 
-class MetaArithmeticFlags(val flags: Seq[MetaArithmeticFlag]) {
-  import zio.Chunk
-  import zio.memcached.Input.{EmptyChunk, WhitespaceChunk}
-
-  val encoded: Chunk[Byte] =
-    flags.foldLeft(EmptyChunk) { (acc, flag) =>
-      acc ++ WhitespaceChunk ++ flag.flag.getBytes(StandardCharsets.US_ASCII)
-    }
-
-  override def toString: String = flags.map(_.flag).mkString(" ")
-}
+class MetaArithmeticFlags(override val flags: Seq[MetaArithmeticFlag]) extends MetaFlagsBase[MetaArithmeticFlag]

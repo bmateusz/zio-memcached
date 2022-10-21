@@ -3,16 +3,12 @@ package zio.memcached.model
 import zio.memcached.MemcachedCommand.validateKey
 import zio.memcached.model.MetaDeleteFlags.MetaDeleteFlag
 
-import java.nio.charset.StandardCharsets
-
 object MetaDeleteFlags {
 
   /**
    * The flags used by the 'md' command
    */
-  sealed trait MetaDeleteFlag {
-    def flag: String
-  }
+  sealed trait MetaDeleteFlag extends MetaFlagBase
 
   /**
    * interpret key as base64 encoded binary value
@@ -107,14 +103,4 @@ object MetaDeleteFlags {
     }
 }
 
-class MetaDeleteFlags(val flags: Seq[MetaDeleteFlag]) {
-  import zio.Chunk
-  import zio.memcached.Input.{EmptyChunk, WhitespaceChunk}
-
-  val encoded: Chunk[Byte] =
-    flags.foldLeft(EmptyChunk) { (acc, flag) =>
-      acc ++ WhitespaceChunk ++ flag.flag.getBytes(StandardCharsets.US_ASCII)
-    }
-
-  override def toString: String = flags.map(_.flag).mkString(" ")
-}
+class MetaDeleteFlags(override val flags: Seq[MetaDeleteFlag]) extends MetaFlagsBase[MetaDeleteFlag]

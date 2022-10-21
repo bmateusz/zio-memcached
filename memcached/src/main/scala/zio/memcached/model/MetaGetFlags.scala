@@ -3,16 +3,12 @@ package zio.memcached.model
 import zio.memcached.MemcachedCommand.validateKey
 import zio.memcached.model.MetaGetFlags.MetaGetFlag
 
-import java.nio.charset.StandardCharsets
-
 object MetaGetFlags {
 
   /**
    * The flags used by the 'mg' command
    */
-  sealed trait MetaGetFlag {
-    def flag: String
-  }
+  sealed trait MetaGetFlag extends MetaFlagBase
 
   /**
    * interpret key as base64 encoded binary value
@@ -181,15 +177,4 @@ object MetaGetFlags {
     }
 }
 
-class MetaGetFlags(val flags: Seq[MetaGetFlag]) {
-
-  import zio.Chunk
-  import zio.memcached.Input.{EmptyChunk, WhitespaceChunk}
-
-  val encoded: Chunk[Byte] =
-    flags.foldLeft(EmptyChunk) { (acc, flag) =>
-      acc ++ WhitespaceChunk ++ flag.flag.getBytes(StandardCharsets.US_ASCII)
-    }
-
-  override def toString: String = flags.map(_.flag).mkString(" ")
-}
+class MetaGetFlags(override val flags: Seq[MetaGetFlag]) extends MetaFlagsBase[MetaGetFlag]

@@ -2,16 +2,12 @@ package zio.memcached.model
 
 import zio.memcached.model.MetaDebugFlags.MetaDebugFlag
 
-import java.nio.charset.StandardCharsets
-
 object MetaDebugFlags {
 
   /**
-   * The flags used by the 'mg' command
+   * The flags used by the 'me' command
    */
-  sealed trait MetaDebugFlag {
-    def flag: String
-  }
+  sealed trait MetaDebugFlag extends MetaFlagBase
 
   /**
    * interpret key as base64 encoded binary value
@@ -44,15 +40,4 @@ object MetaDebugFlags {
     }
 }
 
-class MetaDebugFlags(val flags: Seq[MetaDebugFlag]) {
-
-  import zio.Chunk
-  import zio.memcached.Input.{EmptyChunk, WhitespaceChunk}
-
-  val encoded: Chunk[Byte] =
-    flags.foldLeft(EmptyChunk) { (acc, flag) =>
-      acc ++ WhitespaceChunk ++ flag.flag.getBytes(StandardCharsets.US_ASCII)
-    }
-
-  override def toString: String = flags.map(_.flag).mkString(" ")
-}
+class MetaDebugFlags(override val flags: Seq[MetaDebugFlag]) extends MetaFlagsBase[MetaDebugFlag]
