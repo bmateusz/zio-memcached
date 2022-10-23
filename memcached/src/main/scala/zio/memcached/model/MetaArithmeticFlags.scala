@@ -1,6 +1,6 @@
 package zio.memcached.model
 
-import zio.memcached.MemcachedCommand.validateKey
+import zio.memcached.MemcachedCommand.isValidKey
 import zio.memcached.model.MetaArithmeticFlags.MetaArithmeticFlag
 
 object MetaArithmeticFlags {
@@ -104,9 +104,12 @@ object MetaArithmeticFlags {
    *   Opaque tokens may be up to 32 bytes in length, and are a string similar to keys.
    */
   case class Opaque private (token: String) extends MetaArithmeticFlag {
-    def apply(token: String): Option[Opaque] = Option.when(validateKey(token))(Opaque(token))
-
     override def flag: String = s"O$token"
+  }
+
+  object Opaque {
+    def apply(token: String): Opaque =
+      if (isValidKey(token)) new Opaque(token) else throw new IllegalArgumentException("Invalid token for opaque flag")
   }
 
   sealed trait MetaSetModeFlag extends MetaArithmeticFlag

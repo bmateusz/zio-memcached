@@ -27,20 +27,28 @@ final case class MemcachedRequest(
   compareAndSet: Option[String],
   metaFlags: Option[String]
 ) {
+  // for Scala 2.12
+  private def toLongOption(s: String): Option[Long] =
+    try {
+      Some(s.toLong)
+    } catch {
+      case _: NumberFormatException => None
+    }
+
   def ttoAsDuration: Option[Duration] = ttl.flatMap(_.toIntOption).map(_.seconds)
 
   def extractValue: ZIO[Any, ApiError, String] =
     ZIO.fromOption(value).mapError(_ => ApiError.MissingMandatoryField("value"))
 
   def extractLongValue: ZIO[Any, ApiError, Long] =
-    ZIO.fromOption(value.flatMap(_.toLongOption)).mapError(_ => ApiError.MissingMandatoryField("value (numeric)"))
+    ZIO.fromOption(value.flatMap(toLongOption)).mapError(_ => ApiError.MissingMandatoryField("value (numeric)"))
 
   def extractTtl: ZIO[Any, ApiError, Duration] =
     ZIO.fromOption(ttoAsDuration).mapError(_ => ApiError.MissingMandatoryField("ttl"))
 
   def extractCas: ZIO[Any, ApiError, CasUnique] =
     ZIO
-      .fromOption(compareAndSet.flatMap(_.toLongOption))
+      .fromOption(compareAndSet.flatMap(toLongOption))
       .mapBoth(_ => ApiError.MissingMandatoryField("compareAndSet"), CasUnique.apply)
 
   def extractMetaFlags: ZIO[Any, ApiError, String] =

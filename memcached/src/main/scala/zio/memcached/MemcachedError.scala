@@ -34,5 +34,5 @@ object MemcachedError {
   final case class NoScript(message: String)       extends MemcachedError
   final case class NotBusy(message: String)        extends MemcachedError
   final case class IOError(exception: IOException) extends MemcachedError
-  final case object InvalidKey                     extends MemcachedError
+  case object InvalidKey                           extends MemcachedError
 }

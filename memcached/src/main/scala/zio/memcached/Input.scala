@@ -32,9 +32,6 @@ sealed trait Input[-A] {
 
   val key: String
 
-  def hasValidKey: Boolean =
-    key.nonEmpty && key.lengthCompare(250) <= 0 && !key.exists((c: Char) => c.isControl || c.isWhitespace)
-
   def keyChunk: Chunk[Byte] =
     Chunk.fromArray(key.getBytes(StandardCharsets.US_ASCII))
 }

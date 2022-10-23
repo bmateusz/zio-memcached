@@ -34,7 +34,7 @@ private[memcached] object ByteStream {
     ZLayer.scoped {
       for {
         config  <- ZIO.service[MemcachedConfig]
-        service <- Chunk.from(config.nodes).mapZIO(node => connect(new InetSocketAddress(node.host, node.port)))
+        service <- Chunk.fromIterable(config.nodes).mapZIO(node => connect(new InetSocketAddress(node.host, node.port)))
       } yield service
     }
 
@@ -56,7 +56,7 @@ private[memcached] object ByteStream {
       readBuffer  <- makeBuffer
       writeBuffer <- makeBuffer
       channel     <- openChannel(address)
-    } yield new Connection(readBuffer, writeBuffer, channel)).mapError(MemcachedError.IOError)
+    } yield new Connection(readBuffer, writeBuffer, channel)).mapError(MemcachedError.IOError.apply)
 
   private[this] def completionHandler[A](k: IO[IOException, A] => Unit): CompletionHandler[A, Any] =
     new CompletionHandler[A, Any] {

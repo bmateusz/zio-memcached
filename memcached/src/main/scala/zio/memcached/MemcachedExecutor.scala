@@ -102,7 +102,7 @@ object MemcachedExecutor {
 
         byteStream
           .write(bytes)
-          .mapError(MemcachedError.IOError)
+          .mapError(MemcachedError.IOError.apply)
           .tapBoth(
             e => ZIO.foreachDiscard(reqs)(_.promise.fail(e)),
             _ => ZIO.foreachDiscard(reqs)(req => resQueue.offer(req.promise))
@@ -111,7 +111,7 @@ object MemcachedExecutor {
 
     private def receive: IO[MemcachedError, Unit] =
       byteStream.read
-        .mapError(MemcachedError.IOError)
+        .mapError(MemcachedError.IOError.apply)
         .via(RespValue.decoder)
         .collectSome
         .foreach(response => resQueue.take.flatMap(_.succeed(response)))

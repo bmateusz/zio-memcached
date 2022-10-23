@@ -48,19 +48,19 @@ object RespValue {
 
   final case class MetaDebugResult(header: Map[String, String]) extends RespValue
 
-  final case object End extends RespValue
+  case object End extends RespValue
 
-  final case object Stored extends RespValue
+  case object Stored extends RespValue
 
-  final case object NotStored extends RespValue
+  case object NotStored extends RespValue
 
-  final case object Exists extends RespValue
+  case object Exists extends RespValue
 
-  final case object NotFound extends RespValue
+  case object NotFound extends RespValue
 
-  final case object Touched extends RespValue
+  case object Touched extends RespValue
 
-  final case object Deleted extends RespValue
+  case object Deleted extends RespValue
 
   private[memcached] final val decoder = {
     import internal.State
@@ -154,9 +154,12 @@ object RespValue {
             if (rem == 0) {
               if (chars == EndChunk) {
                 collectedHeaders.zip(collectedValues) match {
-                  case Chunk()      => Failed
-                  case Chunk(value) => Done(BulkStringWithHeader.tupled(value))
-                  case values       => Done(Array(values.map(BulkStringWithHeader.tupled)))
+                  case Chunk()                => Failed
+                  case Chunk((header, value)) => Done(BulkStringWithHeader(header, value))
+                  case values =>
+                    Done(Array(values.map { case (header, value) =>
+                      BulkStringWithHeader(header, value)
+                    }))
                 }
               } else {
                 new String(chars.toArray) match {

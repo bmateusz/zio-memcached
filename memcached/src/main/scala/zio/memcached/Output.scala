@@ -53,7 +53,7 @@ object Output {
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Option[A] =
       respValue match {
         case RespValue.End => None
-        case RespValue.BulkStringWithHeader(h, RespValue.BulkString(s)) =>
+        case RespValue.BulkStringWithHeader(_, RespValue.BulkString(s)) =>
           codec.decode(schema)(s).fold(e => throw CodecError(e), Some(_))
         case other => throw ProtocolError(s"$other isn't a SingleGetOutput")
       }
@@ -122,15 +122,15 @@ object Output {
       respValue match {
         case RespValue.MetaResult(RespValue.NotFound, _, _) =>
           MetaGetResultNotFound()
-        case RespValue.MetaResult(cd: RespValue, h: MetaValueHeader, Some(RespValue.BulkString(s))) =>
+        case RespValue.MetaResult(_: RespValue, h: MetaValueHeader, Some(RespValue.BulkString(s))) =>
           codec.decode(schema)(s).fold(e => throw CodecError(e), MetaGetResultSingle(_, h))
-        case RespValue.MetaResult(cd: RespValue, h: MetaValueHeader, None) =>
+        case RespValue.MetaResult(_: RespValue, h: MetaValueHeader, None) =>
           MetaGetResultFlagsOnly(h)
         case other => throw ProtocolError(s"$other isn't a MetaGetOutput")
       }
   }
 
-  final case object MetaSetOutput extends Output[MetaSetResult] {
+  case object MetaSetOutput extends Output[MetaSetResult] {
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): MetaSetResult =
       respValue match {
         case RespValue.MetaResult(RespValue.Stored, h: MetaValueHeader, None) =>
@@ -145,7 +145,7 @@ object Output {
       }
   }
 
-  final case object MetaDeleteOutput extends Output[MetaDeleteResult] {
+  case object MetaDeleteOutput extends Output[MetaDeleteResult] {
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): MetaDeleteResult =
       respValue match {
         case RespValue.MetaResult(RespValue.Stored, h: MetaValueHeader, None) =>
@@ -158,7 +158,7 @@ object Output {
       }
   }
 
-  final case object MetaArithmeticOutput extends Output[MetaArithmeticResult] {
+  case object MetaArithmeticOutput extends Output[MetaArithmeticResult] {
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): MetaArithmeticResult =
       respValue match {
         case RespValue.MetaResult(RespValue.Stored, h: MetaValueHeader, value) =>
@@ -173,7 +173,7 @@ object Output {
       }
   }
 
-  final case object MetaDebugOutput extends Output[Option[Map[String, String]]] {
+  case object MetaDebugOutput extends Output[Option[Map[String, String]]] {
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Option[Map[String, String]] =
       respValue match {
         case RespValue.MetaDebugResult(value) =>
