@@ -115,7 +115,7 @@ object RespValue {
               case ValueRegex(key, flags, bytes, cas) =>
                 val header = valueHeader(key, flags, bytes, cas)
                 CollectingValue(bytes.toInt, Chunk.empty, Chunk(header), Chunk.empty)
-              case MetaValueRegex(command, bytes, flags) =>
+              case line @ MetaValueRegex(command, bytes, flags) =>
                 command match {
                   case "VA" =>
                     CollectingMetaValue(bytes.toInt, Chunk.empty, parseMetaHeader(flags))
@@ -128,7 +128,7 @@ object RespValue {
                   case "EX" =>
                     Done(MetaResult(Exists, parseMetaHeader(flags), None))
                   case "ME" =>
-                    Done(MetaDebugResult(parseMetaDebugHeader(flags)))
+                    Done(MetaDebugResult(parseMetaDebugHeader(line.drop(3))))
                   case "MN" => // Answer of Meta No-Op
                     Done(MetaResult(End, parseMetaHeader(flags), None))
                   case _ =>

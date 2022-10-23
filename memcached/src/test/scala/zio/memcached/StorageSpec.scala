@@ -3,15 +3,11 @@ package zio.memcached
 import zio.test.Assertion.{exists => _, _}
 import zio.test._
 import zio._
+import zio.memcached.BaseSpec.Person
 import zio.memcached.model.UpdateResult
-import zio.schema.{DeriveSchema, Schema}
 import zio.schema.DeriveSchema.gen
 
 trait StorageSpec extends BaseSpec {
-  case class Person(name: String, age: Int)
-
-  implicit val schemaPerson: Schema[Person] = DeriveSchema.gen[Person]
-
   def storageSuite: Spec[Memcached, MemcachedError] =
     suite("storage")(
       suite("set and get")(
@@ -77,12 +73,19 @@ trait StorageSpec extends BaseSpec {
             result <- get[Int](key)
           } yield assert(result)(isSome(equalTo(1)))
         },
-        test("char") {
+        test("char max") {
           for {
             key    <- uuid
             _      <- set(key, Char.MaxValue)
             result <- get[Char](key)
           } yield assert(result)(isSome(equalTo(65535: Char)))
+        },
+        test("char min") {
+          for {
+            key    <- uuid
+            _      <- set(key, '\u0000')
+            result <- get[Char](key)
+          } yield assert(result)(isSome(equalTo('\u0000')))
         },
         test("long") {
           for {
@@ -97,13 +100,6 @@ trait StorageSpec extends BaseSpec {
             _      <- set(key, true)
             result <- get[Boolean](key)
           } yield assert(result)(isSome(equalTo(true)))
-        },
-        test("char") {
-          for {
-            key    <- uuid
-            _      <- set(key, '\u0000')
-            result <- get[Char](key)
-          } yield assert(result)(isSome(equalTo('\u0000')))
         },
         test("float") {
           for {
@@ -139,6 +135,27 @@ trait StorageSpec extends BaseSpec {
             _      <- set(key, List[String]("a", "b", "c"))
             result <- get[List[String]](key)
           } yield assert(result)(isSome(equalTo(List[String]("a", "b", "c"))))
+        },
+        test("set") {
+          for {
+            key    <- uuid
+            _      <- set(key, Set[String]("a", "b", "c"))
+            result <- get[Set[String]](key)
+          } yield assert(result)(isSome(equalTo(Set[String]("a", "b", "c"))))
+        },
+        test("map") {
+          for {
+            key    <- uuid
+            _      <- set(key, Map[String, String]("a" -> "b", "c" -> "d"))
+            result <- get[Map[String, String]](key)
+          } yield assert(result)(isSome(equalTo(Map[String, String]("a" -> "b", "c" -> "d"))))
+        },
+        test("tuple2") {
+          for {
+            key    <- uuid
+            _      <- set(key, ("a", "b"))
+            result <- get[(String, String)](key)
+          } yield assert(result)(isSome(equalTo(("a", "b"))))
         },
         test("byte array chunk") {
           for {

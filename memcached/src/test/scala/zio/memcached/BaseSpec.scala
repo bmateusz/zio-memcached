@@ -1,6 +1,7 @@
 package zio.memcached
 
 import zio._
+import zio.schema.{DeriveSchema, Schema}
 import zio.schema.codec.{Codec, ProtobufCodec}
 import zio.test.TestAspect.tag
 import zio.test._
@@ -28,4 +29,11 @@ trait BaseSpec extends ZIOSpecDefault {
 
 object BaseSpec {
   final val TestExecutorUnsupported = "test executor unsupported"
+
+  /**
+   * A sample case class for tests
+   */
+  case class Person(name: String, age: Int)
+
+  implicit val schemaPerson: Schema[Person] = DeriveSchema.gen[Person]
 }
