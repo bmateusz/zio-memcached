@@ -25,7 +25,7 @@ final class MemcachedCommand[-In, +Out] private (val input: Input[In], val outpu
         val command = input.encode(in)(memcached.codec)
 
         memcached.executor
-          .execute(input.keyChunk.length, command) // TODO: use a better hash code
+          .execute(input.keyChunk.map(_.toInt).sum, command) // TODO: use a better hash code
           .flatMap[Any, Throwable, Out](out => ZIO.attempt(output.unsafeDecode(out)(memcached.codec)))
       }
       .refineToOrDie[MemcachedError]

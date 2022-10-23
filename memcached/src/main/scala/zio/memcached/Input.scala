@@ -33,7 +33,7 @@ sealed trait Input[-A] {
   val key: String
 
   val keyChunk: Chunk[Byte] = {
-    val keyBytes = key.getBytes(StandardCharsets.UTF_8)
+    val keyBytes = key.getBytes(StandardCharsets.US_ASCII)
     if (keyBytes.length > 250)
       throw new IllegalArgumentException("Key length must be less than 250 bytes")
     else
@@ -191,7 +191,7 @@ object Input {
     }
   }
 
-  final class IncreaseCommand(override val key: String) extends Input[Long] {
+  final class IncrementCommand(override val key: String) extends Input[Long] {
     def encode(value: Long)(implicit codec: Codec): Chunk[BulkString] =
       Chunk.single(
         BulkString(
@@ -201,7 +201,7 @@ object Input {
       )
   }
 
-  final class DecreaseCommand(override val key: String) extends Input[Long] {
+  final class DecrementCommand(override val key: String) extends Input[Long] {
     def encode(value: Long)(implicit codec: Codec): Chunk[BulkString] =
       Chunk.single(
         BulkString(

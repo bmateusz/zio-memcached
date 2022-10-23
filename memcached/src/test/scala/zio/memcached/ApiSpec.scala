@@ -8,7 +8,7 @@ object ApiSpec extends StorageSpec {
   def spec =
     suite("Memcached commands")(
       suite("Live Executor")(
-        stringsSuite
+        storageSuite
       ).provideLayerShared(LiveLayer) @@ sequential @@ withLiveEnvironment
       // suite("Test Executor")(
       //   listSuite,

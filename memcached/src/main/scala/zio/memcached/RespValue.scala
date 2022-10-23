@@ -20,8 +20,6 @@ import zio._
 import zio.memcached.model.ValueHeaders.{GenericValueHeader, MetaValueHeader, valueHeader}
 import zio.stream._
 
-import java.nio.charset.StandardCharsets
-import scala.collection.mutable
 import scala.util.matching.Regex
 
 sealed trait RespValue
@@ -34,12 +32,12 @@ object RespValue {
   final case class BulkString(value: Chunk[Byte]) extends RespValue {
     def length: Int = value.length
 
-    private[memcached] def asString: String = decode(value)
+    private[memcached] def asString: String = new String(value.toArray)
 
     private[memcached] def asLong: Long = internal.unsafeReadLong(asString, 0)
 
     private[memcached] def serialize: Chunk[Byte] =
-      value ++ internal.CrLf
+      value ++ internal.CrLfChunk
   }
 
   final case class Array(values: Chunk[BulkStringWithHeader]) extends RespValue
@@ -69,28 +67,27 @@ object RespValue {
 
     // ZSink fold will return a State.Start when contFn is false
     val lineProcessor =
-      ZSink.fold[String, State](State.Start)(_.inProgress)(_ feed _).mapZIO {
+      ZSink.fold[Chunk[Byte], State](State.Start)(_.inProgress)(_ feed _).mapZIO {
         case State.Done(value) => ZIO.succeedNow(Some(value))
         case State.Failed      => ZIO.fail(MemcachedError.ProtocolError("Invalid data received."))
         case State.Start       => ZIO.succeedNow(None)
         case other             => ZIO.dieMessage(s"Deserialization bug, should not get $other")
       }
 
-    (ZPipeline.utf8Decode >>> ZPipeline.splitOn(internal.CrLfString))
-      .mapError(e => MemcachedError.ProtocolError(e.getLocalizedMessage))
+    ZPipeline
+      .splitOnChunk(internal.CrLfChunk)
+      .andThen(ZPipeline.mapChunks((chars: Chunk[Byte]) => Chunk.single(chars)))
       .andThen(ZPipeline.fromSink(lineProcessor))
   }
 
-  private[memcached] def decode(bytes: Chunk[Byte]): String = new String(bytes.toArray, StandardCharsets.UTF_8)
-
   private object internal {
-    final val CrLf: Chunk[Byte]     = Chunk('\r', '\n')
-    final val CrLfString: String    = "\r\n"
-    final val ValueRegex: Regex     = "^VALUE (\\S+) (\\d+) (\\d+) ?(\\d+)?$".r
-    final val MetaValueRegex: Regex = "^([a-zA-Z]{2})\\s?(\\d+)?\\s?(.+)*$".r
-    final val ErrorRegex: Regex     = "^(?:CLIENT_|SERVER_)?ERROR.*$".r
-    final val NumericRegex: Regex   = "^\\s*(\\d+)\\s*$".r
-    final val KeyValueRegex: Regex  = "^(\\S+)=(\\S+)$".r
+    final val CrLfChunk: Chunk[Byte] = Chunk('\r', '\n')
+    final val EndChunk: Chunk[Byte]  = Chunk('E', 'N', 'D')
+    final val ValueRegex: Regex      = "^VALUE (\\S+) (\\d+) (\\d+) ?(\\d+)?$".r
+    final val MetaValueRegex: Regex  = "^([a-zA-Z]{2})\\s?(\\d+)?\\s?(.+)*$".r
+    final val ErrorRegex: Regex      = "^(?:CLIENT_|SERVER_)?ERROR.*$".r
+    final val NumericRegex: Regex    = "^\\s*(\\d+)\\s*$".r
+    final val KeyValueRegex: Regex   = "^(\\S+)=(\\S+)$".r
 
     sealed trait State {
       self =>
@@ -103,10 +100,10 @@ object RespValue {
           case _                => true
         }
 
-      final def feed(line: String): State =
+      final def feed(chars: Chunk[Byte]): State =
         self match {
           case Start =>
-            line match {
+            new String(chars.toArray) match {
               case ""           => Start
               case "END"        => Done(End)
               case "STORED"     => Done(Stored)
@@ -117,11 +114,11 @@ object RespValue {
               case "DELETED"    => Done(Deleted)
               case ValueRegex(key, flags, bytes, cas) =>
                 val header = valueHeader(key, flags, bytes, cas)
-                CollectingValue(bytes.toInt, new mutable.StringBuilder(), Chunk(header), Chunk.empty)
+                CollectingValue(bytes.toInt, Chunk.empty, Chunk(header), Chunk.empty)
               case MetaValueRegex(command, bytes, flags) =>
                 command match {
                   case "VA" =>
-                    CollectingMetaValue(bytes.toInt, new mutable.StringBuilder(), parseMetaHeader(flags))
+                    CollectingMetaValue(bytes.toInt, Chunk.empty, parseMetaHeader(flags))
                   case "HD" => // Means header only, indicates success
                     Done(MetaResult(Stored, parseMetaHeader(flags), None))
                   case "EN" | "NF" =>
@@ -138,28 +135,28 @@ object RespValue {
                     Failed
                 }
               case NumericRegex(value) =>
-                Done(Numeric(value.toLong))
-              case ErrorRegex() =>
-                Done(Error(line))
+                Done(Numeric(value.toLongOption.getOrElse(0L)))
+              case err @ ErrorRegex() =>
+                Done(Error(err))
               case _ =>
                 Failed
             }
 
-          case CollectingValue(rem, stringBuilder, collectedHeaders, collectedValues) =>
+          case CollectingValue(rem, chunk, collectedHeaders, collectedValues) =>
             if (rem == 0) {
-              if (line == "END") {
+              if (chars == EndChunk) {
                 collectedHeaders.zip(collectedValues) match {
                   case Chunk()      => Failed
                   case Chunk(value) => Done(BulkStringWithHeader.tupled(value))
                   case values       => Done(Array(values.map(BulkStringWithHeader.tupled)))
                 }
               } else {
-                line match {
+                new String(chars.toArray) match {
                   case ValueRegex(key, flags, bytes, cas) =>
                     val header = valueHeader(key, flags, bytes, cas)
                     CollectingValue(
                       bytes.toInt,
-                      new mutable.StringBuilder(),
+                      Chunk.empty,
                       collectedHeaders :+ header,
                       collectedValues
                     )
@@ -167,35 +164,29 @@ object RespValue {
                     Failed
                 }
               }
-            } else if (line.length >= rem) {
-              val stringValue = stringBuilder.append(line.substring(0, rem)).toString
+            } else if (chars.length >= rem) {
+              val finalChunk = chunk ++ chars.take(rem)
               CollectingValue(
                 0,
-                stringBuilder,
+                finalChunk,
                 collectedHeaders,
-                collectedValues :+ BulkString(Chunk.fromArray(stringValue.getBytes(StandardCharsets.UTF_8)))
+                collectedValues :+ BulkString(finalChunk)
               )
             } else {
               CollectingValue(
-                rem - line.length - 2,
-                stringBuilder.append(line).append(CrLfString),
+                rem - chars.length - 2,
+                chunk ++ chars ++ CrLfChunk,
                 collectedHeaders,
                 collectedValues
               )
             }
 
-          case CollectingMetaValue(rem, stringBuilder, header) =>
-            if (line.length >= rem) {
-              val stringValue = stringBuilder.append(line.substring(0, rem)).toString
-              Done(
-                MetaResult(
-                  Exists,
-                  header,
-                  Some(BulkString(Chunk.fromArray(stringValue.getBytes(StandardCharsets.UTF_8))))
-                )
-              )
+          case CollectingMetaValue(rem, chunk, header) =>
+            if (chars.length >= rem) {
+              val finalChunk = chunk ++ chars.take(rem)
+              Done(MetaResult(Exists, header, Some(BulkString(finalChunk))))
             } else {
-              CollectingMetaValue(rem - line.length - 2, stringBuilder.append(line).append(CrLfString), header)
+              CollectingMetaValue(rem - chars.length - 2, chunk ++ chars ++ CrLfChunk, header)
             }
 
           case _ => Failed
@@ -209,13 +200,12 @@ object RespValue {
 
       final case class CollectingValue(
         rem: Int,
-        stringBuilder: mutable.StringBuilder,
+        chunk: Chunk[Byte],
         collectedHeaders: Chunk[GenericValueHeader],
         collectedValues: Chunk[BulkString]
       ) extends State
 
-      final case class CollectingMetaValue(rem: Int, stringBuilder: mutable.StringBuilder, header: MetaValueHeader)
-          extends State
+      final case class CollectingMetaValue(rem: Int, chunk: Chunk[Byte], header: MetaValueHeader) extends State
 
       final case class Done(value: RespValue) extends State
     }

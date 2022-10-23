@@ -53,7 +53,7 @@ final case class MemcachedApiLive(r: Memcached) extends MemcachedApi {
         delete(body.key).map(_.toString).orDie
       case "increase" =>
         body.extractLongValue.flatMap { value =>
-          increase(body.key, value).map(_.toString).orDie
+          increment(body.key, value).map(_.toString).orDie
         }
       case "add" =>
         body.extractValue.flatMap { value =>

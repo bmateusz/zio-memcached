@@ -95,11 +95,11 @@ trait Storage {
   ): ZIO[Memcached, MemcachedError, UpdateResult] =
     MemcachedCommand(new CompareAndSetCommand[V](key), UpdateResultOutput).run((value, casUnique, expireTime))
 
-  final def increase(key: String, value: Long): ZIO[Memcached, MemcachedError, Long] =
+  final def increment(key: String, value: Long): ZIO[Memcached, MemcachedError, Long] =
     if (value >= 0)
-      MemcachedCommand(new IncreaseCommand(key), NumericOutput).run(value)
+      MemcachedCommand(new IncrementCommand(key), NumericOutput).run(value)
     else
-      MemcachedCommand(new DecreaseCommand(key), NumericOutput).run(-value)
+      MemcachedCommand(new DecrementCommand(key), NumericOutput).run(-value)
 
   final def delete(key: String): ZIO[Memcached, MemcachedError, Boolean] =
     MemcachedCommand(new DeleteCommand(key), DeleteOutput).run(())
