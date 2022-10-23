@@ -84,7 +84,7 @@ object RespValue {
     final val CrLfChunk: Chunk[Byte] = Chunk('\r', '\n')
     final val EndChunk: Chunk[Byte]  = Chunk('E', 'N', 'D')
     final val ValueRegex: Regex      = "^VALUE (\\S+) (\\d+) (\\d+) ?(\\d+)?$".r
-    final val MetaValueRegex: Regex  = "^([a-zA-Z]{2})\\s?(\\d+)?\\s?(.+)*$".r
+    final val MetaValueRegex: Regex  = "^([a-zA-Z]{2})\\s?(.+)*$".r
     final val ErrorRegex: Regex      = "^(?:CLIENT_|SERVER_)?ERROR.*$".r
     final val NumericRegex: Regex    = "^\\s*(\\d+)\\s*$".r
     final val KeyValueRegex: Regex   = "^(\\S+)=(\\S+)$".r
@@ -115,10 +115,18 @@ object RespValue {
               case ValueRegex(key, flags, bytes, cas) =>
                 val header = valueHeader(key, flags, bytes, cas)
                 CollectingValue(bytes.toInt, Chunk.empty, Chunk(header), Chunk.empty)
-              case line @ MetaValueRegex(command, bytes, flags) =>
+              case MetaValueRegex(command, flags) =>
                 command match {
                   case "VA" =>
-                    CollectingMetaValue(bytes.toInt, Chunk.empty, parseMetaHeader(flags))
+                    val space = flags.indexOf(' ')
+                    if (space == -1)
+                      CollectingMetaValue(flags.toInt, Chunk.empty, Map.empty)
+                    else
+                      CollectingMetaValue(
+                        flags.substring(0, space).toInt,
+                        Chunk.empty,
+                        parseMetaHeader(flags.substring(space + 1))
+                      )
                   case "HD" => // Means header only, indicates success
                     Done(MetaResult(Stored, parseMetaHeader(flags), None))
                   case "EN" | "NF" =>
@@ -128,7 +136,7 @@ object RespValue {
                   case "EX" =>
                     Done(MetaResult(Exists, parseMetaHeader(flags), None))
                   case "ME" =>
-                    Done(MetaDebugResult(parseMetaDebugHeader(line.drop(3))))
+                    Done(MetaDebugResult(parseMetaDebugHeader(flags)))
                   case "MN" => // Answer of Meta No-Op
                     Done(MetaResult(End, parseMetaHeader(flags), None))
                   case _ =>
