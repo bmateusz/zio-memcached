@@ -143,7 +143,7 @@ object RespValue {
                     Failed
                 }
               case NumericRegex(value) =>
-                Done(Numeric(value.toLongOption.getOrElse(0L)))
+                Done(Numeric(value.toLong))
               case err @ ErrorRegex() =>
                 Done(Error(err))
               case _ =>

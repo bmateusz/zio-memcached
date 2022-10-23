@@ -72,7 +72,7 @@ object Output {
       }
   }
 
-  final object TouchOutput extends Output[Boolean] {
+  case object TouchOutput extends Output[Boolean] {
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Boolean =
       respValue match {
         case RespValue.Touched  => true
