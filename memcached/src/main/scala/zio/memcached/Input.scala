@@ -32,13 +32,11 @@ sealed trait Input[-A] {
 
   val key: String
 
-  val keyChunk: Chunk[Byte] = {
-    val keyBytes = key.getBytes(StandardCharsets.US_ASCII)
-    if (keyBytes.length > 250)
-      throw new IllegalArgumentException("Key length must be less than 250 bytes")
-    else
-      Chunk.fromArray(keyBytes)
-  }
+  def hasValidKey: Boolean =
+    key.nonEmpty && key.lengthCompare(250) <= 0 && !key.exists((c: Char) => c.isControl || c.isWhitespace)
+
+  def keyChunk: Chunk[Byte] =
+    Chunk.fromArray(key.getBytes(StandardCharsets.US_ASCII))
 }
 
 object Input {
@@ -65,8 +63,6 @@ object Input {
   private[memcached] val MdWsChunk               = Chunk.fromArray("md ".getBytes(StandardCharsets.US_ASCII))
   private[memcached] val MaWsChunk               = Chunk.fromArray("ma ".getBytes(StandardCharsets.US_ASCII))
   private[memcached] val MeWsChunk               = Chunk.fromArray("me ".getBytes(StandardCharsets.US_ASCII))
-
-  def apply[A](implicit input: Input[A]): Input[A] = input
 
   @inline
   private[this] def encodeBytes[A](value: A)(implicit codec: Codec, schema: Schema[A]): BulkString =

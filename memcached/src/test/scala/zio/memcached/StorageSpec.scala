@@ -378,6 +378,34 @@ trait StorageSpec extends BaseSpec {
             incRes <- increment(key, 1L)
           } yield assert(incRes)(equalTo(1L))
         },*/
+      ),
+      suite("key validation")(
+        test("invalid key (with space)") {
+          for {
+            exit <- get[String]("invalid key").exit
+          } yield assert(exit)(fails(equalTo(MemcachedError.InvalidKey)))
+        },
+        test("invalid key (with control character)") {
+          for {
+            exit <- get[String]("invalid\u0000key").exit
+          } yield assert(exit)(fails(equalTo(MemcachedError.InvalidKey)))
+        },
+        test("invalid key (empty)") {
+          for {
+            exit <- get[String]("").exit
+          } yield assert(exit)(fails(equalTo(MemcachedError.InvalidKey)))
+        },
+        test("invalid key (too long)") {
+          for {
+            exit <- get[String]("a" * 251).exit
+          } yield assert(exit)(fails(equalTo(MemcachedError.InvalidKey)))
+        },
+        test("valid key (with non-ascii character)") {
+          for {
+            key    <- uuid.map(_ + "-valid\u00A0key")
+            result <- get[String](key)
+          } yield assert(result)(isNone)
+        }
       )
     )
 }

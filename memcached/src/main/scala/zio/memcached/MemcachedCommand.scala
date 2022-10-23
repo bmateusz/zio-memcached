@@ -22,11 +22,15 @@ final class MemcachedCommand[-In, +Out] private (val input: Input[In], val outpu
   private[memcached] def run(in: In): ZIO[Memcached, MemcachedError, Out] =
     ZIO
       .serviceWithZIO[Memcached] { memcached =>
-        val command = input.encode(in)(memcached.codec)
+        if (input.hasValidKey) {
+          val command = input.encode(in)(memcached.codec)
 
-        memcached.executor
-          .execute(input.keyChunk.map(_.toInt).sum, command) // TODO: use a better hash code
-          .flatMap[Any, Throwable, Out](out => ZIO.attempt(output.unsafeDecode(out)(memcached.codec)))
+          memcached.executor
+            .execute(input.keyChunk.foldLeft(0: Int)(_ + _), command) // TODO: use a better hash code
+            .flatMap[Any, Throwable, Out](out => ZIO.attempt(output.unsafeDecode(out)(memcached.codec)))
+        } else {
+          ZIO.fail(MemcachedError.InvalidKey)
+        }
       }
       .refineToOrDie[MemcachedError]
 }

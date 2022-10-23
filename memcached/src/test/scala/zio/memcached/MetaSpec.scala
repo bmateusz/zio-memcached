@@ -266,6 +266,25 @@ trait MetaSpec extends BaseSpec {
                         MetaArithmeticFlags.InitialValue(1)
                       )
           } yield assert(result)(equalTo(MetaArithmeticResultExists(Map.empty, Some(1L))))
+        },
+        test("incr with initial value and expiration") {
+          for {
+            key <- uuid
+            result1 <- metaArithmetic(
+                         key,
+                         MetaArithmeticFlags.ReturnItemValue,
+                         MetaArithmeticFlags.CreateItemOnMiss(1),
+                         MetaArithmeticFlags.InitialValue(1)
+                       )
+            _ <- ZIO.sleep(2.seconds)
+            result2 <- metaArithmetic(
+                         key,
+                         MetaArithmeticFlags.ReturnItemValue,
+                         MetaArithmeticFlags.CreateItemOnMiss(1),
+                         MetaArithmeticFlags.InitialValue(1)
+                       )
+          } yield assert(result1)(equalTo(MetaArithmeticResultExists(Map.empty, Some(1L)))) &&
+            assert(result2)(equalTo(MetaArithmeticResultExists(Map.empty, Some(1L))))
         }
       ),
       suite("other commands")(
@@ -275,6 +294,12 @@ trait MetaSpec extends BaseSpec {
             _      <- metaSet(key, "value")
             result <- metaDebug(key)
           } yield assert(result)(isSome(contains("key" -> key)))
+        },
+        test("meta debug not existing") {
+          for {
+            key    <- uuid
+            result <- metaDebug(key)
+          } yield assert(result)(isNone)
         }
       )
     )
