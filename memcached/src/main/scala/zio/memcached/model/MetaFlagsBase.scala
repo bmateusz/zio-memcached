@@ -1,8 +1,9 @@
 package zio.memcached.model
 
-import java.nio.charset.StandardCharsets
 import zio.Chunk
 import zio.memcached.Input.{EmptyChunk, WhitespaceChunk}
+
+import java.nio.charset.StandardCharsets
 
 abstract class MetaFlagsBase[T <: MetaFlagBase] {
   def flags: Seq[T]

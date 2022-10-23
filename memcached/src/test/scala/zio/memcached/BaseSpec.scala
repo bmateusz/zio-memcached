@@ -1,8 +1,8 @@
 package zio.memcached
 
 import zio._
-import zio.schema.{DeriveSchema, Schema}
 import zio.schema.codec.{Codec, ProtobufCodec}
+import zio.schema.{DeriveSchema, Schema}
 import zio.test.TestAspect.tag
 import zio.test._
 

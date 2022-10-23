@@ -1,11 +1,11 @@
 package zio.memcached
 
-import zio.test.Assertion.{exists => _, _}
-import zio.test._
 import zio._
 import zio.memcached.BaseSpec.Person
 import zio.memcached.model.UpdateResult
 import zio.schema.DeriveSchema.gen
+import zio.test.Assertion.{exists => _, _}
+import zio.test._
 
 trait StorageSpec extends BaseSpec {
   def storageSuite: Spec[Memcached, MemcachedError] =

@@ -1,11 +1,11 @@
 package zio.memcached
 
-import zio.memcached.model.{CasUnique, MetaArithmeticFlags, MetaDeleteFlags, MetaGetFlags, MetaSetFlags}
+import zio._
 import zio.memcached.model.MetaResult._
+import zio.memcached.model.{CasUnique, MetaArithmeticFlags, MetaDeleteFlags, MetaGetFlags, MetaSetFlags}
+import zio.schema.DeriveSchema.gen
 import zio.test.Assertion.{exists => _, _}
 import zio.test._
-import zio._
-import zio.schema.DeriveSchema.gen
 
 import java.nio.charset.StandardCharsets
 import java.util.Base64
