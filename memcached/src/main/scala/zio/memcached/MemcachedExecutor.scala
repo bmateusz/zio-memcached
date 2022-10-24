@@ -17,9 +17,10 @@
 package zio.memcached
 
 import zio._
+import zio.memcached.Input.EncodedCommand
 
 trait MemcachedExecutor {
-  def execute(hash: Int, command: Chunk[RespValue.BulkString]): IO[MemcachedError, RespValue]
+  def execute(hash: Int, command: EncodedCommand): IO[MemcachedError, RespValue]
 }
 
 object MemcachedExecutor {
@@ -29,10 +30,10 @@ object MemcachedExecutor {
   lazy val local: ZLayer[Any, MemcachedError.IOError, MemcachedExecutor] =
     ByteStream.default >>> StreamedExecutor
 
-  // lazy val test: ULayer[MemcachedExecutor] = TestExecutor.layer
+  lazy val test: ULayer[MemcachedExecutor] = TestExecutor.layer
 
   private[this] final case class Request(
-    command: Chunk[RespValue.BulkString],
+    command: Chunk[Byte],
     promise: Promise[MemcachedError, RespValue]
   )
 
@@ -59,10 +60,10 @@ object MemcachedExecutor {
   private[this] final class Live(nodes: Chunk[Node]) extends MemcachedExecutor {
     private val length = nodes.length
 
-    def execute(hash: Int, command: Chunk[RespValue.BulkString]): IO[MemcachedError, RespValue] =
+    def execute(hash: Int, command: EncodedCommand): IO[MemcachedError, RespValue] =
       Promise
         .make[MemcachedError, RespValue]
-        .flatMap(promise => nodes(hash % length).offer(Request(command, promise)) *> promise.await)
+        .flatMap(promise => nodes(hash % length).offer(Request(command.chunk, promise)) *> promise.await)
   }
 
   private[this] final class Node(
@@ -93,9 +94,7 @@ object MemcachedExecutor {
 
         while (it.hasNext) {
           val req = it.next()
-          req.command.foreach { chunk =>
-            buffer ++= chunk.serialize
-          }
+          buffer ++= req.command
         }
 
         val bytes = buffer.result()

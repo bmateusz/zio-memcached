@@ -302,5 +302,5 @@ trait MetaSpec extends BaseSpec {
           } yield assert(result)(isNone)
         }
       )
-    )
+    ) @@ testExecutorUnsupported
 }
