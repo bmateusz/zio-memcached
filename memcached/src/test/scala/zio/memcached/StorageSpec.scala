@@ -192,7 +192,14 @@ trait StorageSpec extends BaseSpec {
         test("set ttl") {
           for {
             key    <- uuid
-            _      <- set(key, "value", Some(1.second))
+            _      <- set(key, "value", Some(1.day))
+            result <- get[String](key)
+          } yield assert(result)(isSome(equalTo("value")))
+        },
+        test("set ttl longer than 30 days") {
+          for {
+            key    <- uuid
+            _      <- set(key, "value", Some(90.days))
             result <- get[String](key)
           } yield assert(result)(isSome(equalTo("value")))
         },
