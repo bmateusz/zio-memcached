@@ -51,7 +51,7 @@ lazy val memcached =
       ),
       testFrameworks := List(new TestFramework("zio.test.sbt.ZTestFramework"))
     )
-/*
+
 lazy val benchmarks =
   project
     .in(file("benchmarks"))
@@ -62,13 +62,12 @@ lazy val benchmarks =
       crossScalaVersions -= Scala3,
       publish / skip := true,
       libraryDependencies ++= List(
-        "dev.profunktor"    %% "redis4cats-effects"  % "1.2.0",
-        "io.chrisdavenport" %% "rediculous"          % "0.4.0",
-        "io.laserdisc"      %% "laserdisc-fs2"       % "0.5.0",
-        "dev.zio"           %% "zio-schema-protobuf" % "0.2.1"
+        "net.spy"   % "spymemcached"        % "2.12.3",
+        "dev.zio"  %% "zio-schema-protobuf" % "0.2.1",
+        "org.slf4j" % "slf4j-simple"        % "2.0.3"
       )
     )
- */
+
 lazy val example =
   project
     .in(file("example"))
