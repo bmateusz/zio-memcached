@@ -469,14 +469,15 @@ private[memcached] final class TestExecutor(
         .get(key)
         .flatMap {
           case Some(keyInfo) if keyInfo.expireAt.exists(_.isBefore(now)) =>
-            state.delete(key).as(None: Option[KeyInfo])
+            state
+              .delete(key) *> cont(None, now)
           case Some(keyInfo) =>
             val bumped = keyInfo.copy(lastAccessed = Some(now))
-            state.put(key, bumped).as(Some(bumped))
+            state
+              .put(key, bumped) *> cont(Some(bumped), now)
           case None =>
-            STM.succeedNow(None: Option[KeyInfo])
+            cont(None, now)
         }
-        .flatMap(cont(_, now))
         .commit
     }
 
