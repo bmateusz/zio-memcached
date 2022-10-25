@@ -40,14 +40,14 @@ object MetaArithmeticFlags {
   /**
    * initial value to use if auto created after miss (default 0)
    */
-  case class InitialValue(seconds: Long) extends MetaArithmeticFlag {
-    override def flag: String = s"J$seconds"
+  case class InitialValue(value: Long) extends MetaArithmeticFlag {
+    override def flag: String = s"J$value"
   }
 
   /**
    * delta to apply (decimal unsigned 64-bit number, default 1)
    */
-  case class Delta(value: Int) extends MetaArithmeticFlag {
+  case class Delta(value: Long) extends MetaArithmeticFlag {
     override def flag: String = s"D$value"
   }
 
@@ -151,7 +151,7 @@ object MetaArithmeticFlags {
               case "C" => CompareCasToken(CasUnique(value.toLong))
               case "N" => CreateItemOnMiss(value.toLong)
               case "J" => InitialValue(value.toLong)
-              case "D" => Delta(value.toInt)
+              case "D" => Delta(value.toLong)
               case "T" => UpdateRemainingTTL(value.toLong)
               case "O" => Opaque(value)
               case "M" =>
@@ -166,4 +166,16 @@ object MetaArithmeticFlags {
     }
 }
 
-class MetaArithmeticFlags(override val flags: Seq[MetaArithmeticFlag]) extends MetaFlagsBase[MetaArithmeticFlag]
+class MetaArithmeticFlags(override val flags: Seq[MetaArithmeticFlag]) extends MetaFlagsBase[MetaArithmeticFlag] {
+  import MetaArithmeticFlags._
+
+  def mode: Option[MetaSetModeFlag] = flags.collectFirst { case flag: MetaSetModeFlag => flag }
+
+  def delta: Option[Delta] = flags.collectFirst { case flag: Delta => flag }
+
+  def createItemOnMiss: Option[CreateItemOnMiss] = flags.collectFirst { case flag: CreateItemOnMiss => flag }
+
+  def initialValue: Option[InitialValue] = flags.collectFirst { case flag: InitialValue => flag }
+
+  def casToken: Option[CompareCasToken] = flags.collectFirst { case flag: CompareCasToken => flag }
+}

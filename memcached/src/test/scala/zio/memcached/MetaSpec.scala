@@ -181,11 +181,13 @@ trait MetaSpec extends BaseSpec {
         },
         test("get and touch") {
           for {
-            key    <- uuid
-            _      <- metaSet(key, "value")
-            _      <- metaGet[String](key, MetaGetFlags.ReturnItemValue, MetaGetFlags.UpdateRemainingTTL(1))
-            _      <- ZIO.sleep(2.seconds)
-            result <- metaGet[String](key, MetaGetFlags.ReturnItemValue, MetaGetFlags.UpdateRemainingTTL(1))
+            key <- uuid
+            _   <- metaSet(key, "value")
+            _   <- metaGet[String](key, MetaGetFlags.ReturnItemValue, MetaGetFlags.UpdateRemainingTTL(1))
+            delayed <- metaGet[String](key, MetaGetFlags.ReturnItemValue, MetaGetFlags.UpdateRemainingTTL(1))
+                         .delay(2.seconds)
+                         .fork
+            result <- TestClock.adjust(2.seconds) *> delayed.join
           } yield assert(result)(equalTo(MetaGetResultNotFound()))
         },
         test("delete") {
@@ -276,7 +278,8 @@ trait MetaSpec extends BaseSpec {
                          MetaArithmeticFlags.CreateItemOnMiss(1),
                          MetaArithmeticFlags.InitialValue(1)
                        )
-            _ <- ZIO.sleep(2.seconds)
+            sleeper <- Clock.sleep(2.seconds).fork
+            _       <- TestClock.adjust(2.seconds) *> sleeper.join
             result2 <- metaArithmetic(
                          key,
                          MetaArithmeticFlags.ReturnItemValue,
@@ -302,5 +305,5 @@ trait MetaSpec extends BaseSpec {
           } yield assert(result)(isNone)
         }
       )
-    ) @@ testExecutorUnsupported
+    )
 }

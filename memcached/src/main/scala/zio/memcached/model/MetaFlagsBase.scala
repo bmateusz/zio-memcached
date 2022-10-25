@@ -12,4 +12,8 @@ abstract class MetaFlagsBase[T <: MetaFlagBase] {
     flags.foldLeft(EmptyChunk) { (acc, flag) =>
       acc ++ WhitespaceChunk ++ flag.flag.getBytes(StandardCharsets.US_ASCII)
     }
+
+  def contains[A <: T](flag: A): Boolean = flags.contains(flag)
+
+  def collectFirst[A <: T](pf: PartialFunction[T, A]): Option[A] = flags.collectFirst(pf)
 }

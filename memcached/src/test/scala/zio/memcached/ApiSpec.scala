@@ -1,7 +1,6 @@
 package zio.memcached
 
 import zio._
-import zio.test.TestAnnotation
 import zio.test.TestAspect._
 
 object ApiSpec extends StorageSpec with MetaSpec {
@@ -15,9 +14,7 @@ object ApiSpec extends StorageSpec with MetaSpec {
       suite("Test Executor")(
         storageSuite,
         metaSuite
-      ).filterAnnotations(TestAnnotation.tagged)(t => !t.contains(BaseSpec.TestExecutorUnsupported))
-        .get
-        .provideLayerShared(TestLayer)
+      ).provideLayerShared(TestLayer)
     )
 
   private val LiveLayer =

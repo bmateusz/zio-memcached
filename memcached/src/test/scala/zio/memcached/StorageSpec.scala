@@ -205,10 +205,10 @@ trait StorageSpec extends BaseSpec {
         },
         test("set ttl and expire") {
           for {
-            key    <- uuid
-            _      <- set(key, "value", Some(1.second))
-            _      <- ZIO.sleep(2.seconds)
-            result <- get[String](key)
+            key     <- uuid
+            _       <- set(key, "value", Some(1.second))
+            delayed <- get[String](key).delay(2.seconds).fork
+            result  <- TestClock.adjust(2.seconds) *> delayed.join
           } yield assert(result)(isNone)
         },
         test("set ttl and update") {
@@ -229,11 +229,11 @@ trait StorageSpec extends BaseSpec {
         },
         test("set ttl with touch") {
           for {
-            key    <- uuid
-            _      <- set(key, "value", None)
-            _      <- touch(key, 1.seconds)
-            _      <- ZIO.sleep(2.seconds)
-            result <- get[String](key)
+            key     <- uuid
+            _       <- set(key, "value", None)
+            _       <- touch(key, 1.second)
+            delayed <- get[String](key).delay(2.seconds).fork
+            result  <- TestClock.adjust(2.seconds) *> delayed.join
           } yield assert(result)(isNone)
         },
         test("set ttl with get and touch") {
@@ -241,8 +241,8 @@ trait StorageSpec extends BaseSpec {
             key       <- uuid
             _         <- set(key, "value", None)
             gatResult <- getAndTouch[String](key, 1.seconds)
-            _         <- ZIO.sleep(2.seconds)
-            getResult <- get[String](key)
+            delayed   <- get[String](key).delay(2.seconds).fork
+            getResult <- TestClock.adjust(2.seconds) *> delayed.join
           } yield assert(gatResult)(isSome(equalTo("value"))) && assert(getResult)(isNone)
         }
       ),

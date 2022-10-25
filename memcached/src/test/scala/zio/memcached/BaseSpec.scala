@@ -3,7 +3,6 @@ package zio.memcached
 import zio._
 import zio.schema.codec.{Codec, ProtobufCodec}
 import zio.schema.{DeriveSchema, Schema}
-import zio.test.TestAspect.tag
 import zio.test._
 
 import java.time.Instant
@@ -22,13 +21,9 @@ trait BaseSpec extends ZIOSpecDefault {
 
   final val uuid: UIO[String] =
     ZIO.succeed(UUID.randomUUID().toString)
-
-  final val testExecutorUnsupported: TestAspectPoly =
-    tag(BaseSpec.TestExecutorUnsupported)
 }
 
 object BaseSpec {
-  final val TestExecutorUnsupported = "test executor unsupported"
 
   /**
    * A sample case class for tests

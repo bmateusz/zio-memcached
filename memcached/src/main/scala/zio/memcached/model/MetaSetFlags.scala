@@ -166,4 +166,20 @@ object MetaSetFlags {
     }
 }
 
-class MetaSetFlags(override val flags: Seq[MetaSetFlag]) extends MetaFlagsBase[MetaSetFlag]
+class MetaSetFlags(override val flags: Seq[MetaSetFlag]) extends MetaFlagsBase[MetaSetFlag] {
+  import MetaSetFlags._
+
+  def casUnique: Option[CasUnique] = flags.collectFirst { case CompareCasToken(cas) => cas }
+
+  def clientFlags: Option[Int] = flags.collectFirst { case SetClientFlagsToken(value) => value }
+
+  def expiration: Option[Long] = flags.collectFirst { case UpdateRemainingTTL(seconds) => seconds }
+
+  def mode: MetaSetModeFlag = flags.collectFirst {
+    case ModeAdd     => ModeAdd
+    case ModeAppend  => ModeAppend
+    case ModePrepend => ModePrepend
+    case ModeReplace => ModeReplace
+    case ModeSet     => ModeSet
+  }.getOrElse(ModeSet)
+}
