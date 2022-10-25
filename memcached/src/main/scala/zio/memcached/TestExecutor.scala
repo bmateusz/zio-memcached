@@ -4,8 +4,8 @@ import zio._
 import zio.memcached.Input.{EncodedCommand, ThirtyDaysInSeconds}
 import zio.memcached.RespValue.{BulkString, MetaDebugResult, MetaResult}
 import zio.memcached.TestExecutor.{InvalidNeedsRevalidation, KeyInfo}
-import zio.memcached.model.{CasUnique, MetaArithmeticFlags, MetaDeleteFlags, MetaGetFlags, MetaSetFlags}
 import zio.memcached.model.ValueHeaders.{ValueHeader, ValueHeaderWithCas}
+import zio.memcached.model.{CasUnique, MetaArithmeticFlags, MetaDeleteFlags, MetaGetFlags, MetaSetFlags}
 import zio.stm._
 
 import java.time.Instant
