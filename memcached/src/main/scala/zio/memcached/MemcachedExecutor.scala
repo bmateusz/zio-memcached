@@ -17,10 +17,10 @@
 package zio.memcached
 
 import zio._
-import zio.memcached.Input.EncodedCommand
+import zio.memcached.Input.Input
 
 trait MemcachedExecutor {
-  def execute(hash: Int, command: EncodedCommand): IO[MemcachedError, RespValue]
+  def execute(hash: Int, command: Input): IO[MemcachedError, RespValue]
 }
 
 object MemcachedExecutor {
@@ -32,7 +32,7 @@ object MemcachedExecutor {
 
   lazy val test: ULayer[MemcachedExecutor] = TestExecutor.layer
 
-  private[this] final case class Request(
+  private[memcached] final case class Request(
     command: Chunk[Byte],
     promise: Promise[MemcachedError, RespValue]
   )
@@ -60,10 +60,10 @@ object MemcachedExecutor {
   private[this] final class Live(nodes: Chunk[Node]) extends MemcachedExecutor {
     private val length = nodes.length
 
-    def execute(hash: Int, command: EncodedCommand): IO[MemcachedError, RespValue] =
+    def execute(hash: Int, command: Input): IO[MemcachedError, RespValue] =
       Promise
         .make[MemcachedError, RespValue]
-        .flatMap(promise => nodes(hash % length).offer(Request(command.chunk, promise)) *> promise.await)
+        .flatMap(promise => nodes(Math.abs(hash % length)).offer(Request(command, promise)) *> promise.await)
   }
 
   private[this] final class Node(
@@ -87,25 +87,17 @@ object MemcachedExecutor {
 
     private def drainWith(e: MemcachedError): UIO[Unit] = resQueue.takeAll.flatMap(ZIO.foreachDiscard(_)(_.fail(e)))
 
-    private def send: IO[MemcachedError.IOError, Option[Unit]] =
+    private def send: IO[MemcachedError.IOError, Unit] =
       reqQueue.takeBetween(1, RequestQueueSize).flatMap { reqs =>
-        val buffer = ChunkBuilder.make[Byte]()
-        val it     = reqs.iterator
-
-        while (it.hasNext) {
-          val req = it.next()
-          buffer ++= req.command
+        ZIO.foreachDiscard(reqs) { req =>
+          byteStream
+            .write(req.command)
+            .mapError(MemcachedError.IOError.apply)
+            .tapBoth(
+              e => req.promise.fail(e),
+              _ => resQueue.offer(req.promise)
+            )
         }
-
-        val bytes = buffer.result()
-
-        byteStream
-          .write(bytes)
-          .mapError(MemcachedError.IOError.apply)
-          .tapBoth(
-            e => ZIO.foreachDiscard(reqs)(_.promise.fail(e)),
-            _ => ZIO.foreachDiscard(reqs)(req => resQueue.offer(req.promise))
-          )
       }
 
     private def receive: IO[MemcachedError, Unit] =

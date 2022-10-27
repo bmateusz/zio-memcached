@@ -29,22 +29,11 @@ object RespValue {
 
   final case class Numeric(value: Long) extends RespValue
 
-  final case class BulkString(value: Chunk[Byte]) extends RespValue {
-    def length: Int = value.length
-
-    private[memcached] def asString: String = new String(value.toArray)
-
-    private[memcached] def asLong: Long = internal.unsafeReadLong(asString, 0)
-
-    private[memcached] def serialize: Chunk[Byte] =
-      value ++ internal.CrLfChunk
-  }
-
   final case class Array(values: Chunk[BulkStringWithHeader]) extends RespValue
 
-  final case class BulkStringWithHeader(header: GenericValueHeader, value: BulkString) extends RespValue
+  final case class BulkStringWithHeader(header: GenericValueHeader, value: Chunk[Byte]) extends RespValue
 
-  final case class MetaResult(cd: RespValue, header: MetaValueHeader, value: Option[BulkString]) extends RespValue
+  final case class MetaResult(cd: RespValue, header: MetaValueHeader, value: Option[Chunk[Byte]]) extends RespValue
 
   final case class MetaDebugResult(header: Map[String, String]) extends RespValue
 
@@ -114,19 +103,26 @@ object RespValue {
               case "DELETED"    => Done(Deleted)
               case ValueRegex(key, flags, bytes, cas) =>
                 val header = valueHeader(key, flags, bytes, cas)
-                CollectingValue(bytes.toInt, Chunk.empty, Chunk(header), Chunk.empty)
+                CollectingValue(bytes.toInt, ChunkBuilder.make[Byte](header.bytes), header)
               case MetaValueRegex(command, flags) =>
                 command match {
                   case "VA" =>
                     val space = flags.indexOf(' ')
-                    if (space == -1)
-                      CollectingMetaValue(flags.toInt, Chunk.empty, Map.empty)
-                    else
+                    if (space == -1) {
+                      val bytes = flags.toInt
                       CollectingMetaValue(
-                        flags.substring(0, space).toInt,
-                        Chunk.empty,
+                        bytes,
+                        ChunkBuilder.make[Byte](bytes),
+                        Map.empty
+                      )
+                    } else {
+                      val bytes = flags.substring(0, space).toInt
+                      CollectingMetaValue(
+                        bytes,
+                        ChunkBuilder.make[Byte](bytes),
                         parseMetaHeader(flags.substring(space + 1))
                       )
+                    }
                   case "HD" => // Means header only, indicates success
                     Done(MetaResult(Stored, parseMetaHeader(flags), None))
                   case "EN" | "NF" =>
@@ -150,54 +146,38 @@ object RespValue {
                 Failed
             }
 
-          case CollectingValue(rem, chunk, collectedHeaders, collectedValues) =>
+          case CollectingValue(rem, chunk, header) =>
             if (rem == 0) {
               if (chars == EndChunk) {
-                collectedHeaders.zip(collectedValues) match {
-                  case Chunk()                => Failed
-                  case Chunk((header, value)) => Done(BulkStringWithHeader(header, value))
-                  case values =>
-                    Done(Array(values.map { case (header, value) =>
-                      BulkStringWithHeader(header, value)
-                    }))
-                }
+                Done(BulkStringWithHeader(header, chunk.result()))
               } else {
-                new String(chars.toArray) match {
-                  case ValueRegex(key, flags, bytes, cas) =>
-                    val header = valueHeader(key, flags, bytes, cas)
-                    CollectingValue(
-                      bytes.toInt,
-                      Chunk.empty,
-                      collectedHeaders :+ header,
-                      collectedValues
-                    )
-                  case _ =>
-                    Failed
-                }
+                Failed
               }
             } else if (chars.length >= rem) {
-              val finalChunk = chunk ++ chars.take(rem)
+              chunk ++= chars.take(rem)
               CollectingValue(
                 0,
-                finalChunk,
-                collectedHeaders,
-                collectedValues :+ BulkString(finalChunk)
+                chunk,
+                header
               )
             } else {
+              chunk ++= chars
+              chunk ++= CrLfChunk
               CollectingValue(
                 rem - chars.length - 2,
-                chunk ++ chars ++ CrLfChunk,
-                collectedHeaders,
-                collectedValues
+                chunk,
+                header
               )
             }
 
           case CollectingMetaValue(rem, chunk, header) =>
             if (chars.length >= rem) {
-              val finalChunk = chunk ++ chars.take(rem)
-              Done(MetaResult(Exists, header, Some(BulkString(finalChunk))))
+              chunk ++= chars.take(rem)
+              Done(MetaResult(Exists, header, Some(chunk.result())))
             } else {
-              CollectingMetaValue(rem - chars.length - 2, chunk ++ chars ++ CrLfChunk, header)
+              chunk ++= chars
+              chunk ++= CrLfChunk
+              CollectingMetaValue(rem - chars.length - 2, chunk, header)
             }
 
           case _ => Failed
@@ -211,34 +191,13 @@ object RespValue {
 
       final case class CollectingValue(
         rem: Int,
-        chunk: Chunk[Byte],
-        collectedHeaders: Chunk[GenericValueHeader],
-        collectedValues: Chunk[BulkString]
+        chunk: ChunkBuilder[Byte],
+        collectedHeaders: GenericValueHeader
       ) extends State
 
-      final case class CollectingMetaValue(rem: Int, chunk: Chunk[Byte], header: MetaValueHeader) extends State
+      final case class CollectingMetaValue(rem: Int, chunk: ChunkBuilder[Byte], header: MetaValueHeader) extends State
 
       final case class Done(value: RespValue) extends State
-    }
-
-    def unsafeReadLong(text: String, startFrom: Int): Long = {
-      var pos = startFrom
-      var res = 0L
-      var neg = false
-
-      if (text.charAt(pos) == '-') {
-        neg = true
-        pos += 1
-      }
-
-      val len = text.length
-
-      while (pos < len) {
-        res = res * 10 + text.charAt(pos) - '0'
-        pos += 1
-      }
-
-      if (neg) -res else res
     }
 
     private def parseMetaHeader(string: String): MetaValueHeader =

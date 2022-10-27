@@ -4,8 +4,6 @@ import zio._
 import zio.test.Assertion._
 import zio.test._
 
-import java.nio.charset.StandardCharsets
-
 object ByteStreamSpec extends BaseSpec {
   def spec: Spec[Any, Throwable] =
     suite("Byte stream")(
@@ -13,10 +11,10 @@ object ByteStreamSpec extends BaseSpec {
         for {
           streams <- ZIO.service[Chunk[ByteStream]]
           stream   = streams.head
-          data     = Chunk.fromArray("mn\r\n".getBytes(StandardCharsets.US_ASCII))
+          data     = Chunk.fromArray("mn\r\n".getBytes())
           _       <- stream.write(data)
           res     <- stream.read.take(4).runCollect
-        } yield assert(res)(equalTo(Chunk.fromArray("MN\r\n".getBytes(StandardCharsets.US_ASCII))))
+        } yield assert(res)(equalTo(Chunk.fromArray("MN\r\n".getBytes())))
       }
     ).provideLayer(ByteStream.default)
 }

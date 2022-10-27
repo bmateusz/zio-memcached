@@ -17,28 +17,24 @@
 package zio.memcached
 
 import zio._
-import zio.memcached.MemcachedCommand.isValidKey
 
-final class MemcachedCommand[-In, +Out] private (val input: Input[In], val output: Output[Out]) {
-  private[memcached] def run(in: In): ZIO[Memcached, MemcachedError, Out] =
+object MemcachedCommand {
+  private[memcached] def apply[Out](
+    key: String,
+    input: Chunk[Byte],
+    output: Output[Out]
+  ): ZIO[Memcached, MemcachedError, Out] =
     ZIO
       .serviceWithZIO[Memcached] { memcached =>
-        if (isValidKey(input.key)) {
-          val command = input.encode(in)(memcached.codec)
-
+        if (isValidKey(key)) {
           memcached.executor
-            .execute(input.keyChunk.foldLeft(0: Int)(_ + _), command) // TODO: use a better hash code
+            .execute(key.hashCode, input)
             .flatMap[Any, Throwable, Out](out => ZIO.attempt(output.unsafeDecode(out)(memcached.codec)))
         } else {
           ZIO.fail(MemcachedError.InvalidKey)
         }
       }
       .refineToOrDie[MemcachedError]
-}
-
-object MemcachedCommand {
-  private[memcached] def apply[In, Out](input: Input[In], output: Output[Out]): MemcachedCommand[In, Out] =
-    new MemcachedCommand(input, output)
 
   def isValidKey(key: String): Boolean =
     key.nonEmpty && key.lengthCompare(250) <= 0 && !key.exists((c: Char) => c.isControl || c.isWhitespace)

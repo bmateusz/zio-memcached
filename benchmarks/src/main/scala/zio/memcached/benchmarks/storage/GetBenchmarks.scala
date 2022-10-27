@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package zio.memcached.benchmarks.strings
+package zio.memcached.benchmarks.storage
 
 import org.openjdk.jmh.annotations._
 import zio.memcached._
@@ -44,14 +44,14 @@ class GetBenchmarks extends BenchmarkRuntime {
 
   @Benchmark
   def spyMemcached(): Unit = {
-    execute(ZIO.foreachParDiscard(items)(i => ZIO.succeedNow(SpyMemcached.get(i))))
+    execute(ZIO.foreachDiscard(items)(i => ZIO.succeedNow(SpyMemcached.get(i))))
   }
 
   @Benchmark
-  def zio(): Unit = execute(ZIO.foreachParDiscard(items)(get[String](_)))
+  def zio(): Unit = execute(ZIO.foreachDiscard(items)(get[String](_)))
 
   @TearDown(Level.Trial)
   def tearDown(): Unit = {
-    SpyMemcached.shutdown(0, TimeUnit.SECONDS) : Unit
+    val _ = SpyMemcached.shutdown(0, TimeUnit.SECONDS)
   }
 }

@@ -17,70 +17,20 @@
 package zio.memcached
 
 import zio._
-import zio.memcached.Input.EncodedCommand
-import zio.memcached.RespValue.BulkString
 import zio.memcached.model.{CasUnique, MetaArithmeticFlags, MetaDebugFlags, MetaDeleteFlags, MetaGetFlags, MetaSetFlags}
 import zio.schema.Schema
 import zio.schema.codec.Codec
 
-import java.nio.charset.StandardCharsets
 import java.time.Instant
 
-sealed trait Input[-A] {
-  self =>
-
-  private[memcached] def encode(data: A)(implicit codec: Codec): EncodedCommand
-
-  val key: String
-
-  def keyChunk: Chunk[Byte] =
-    Chunk.fromArray(key.getBytes(StandardCharsets.US_ASCII))
-}
-
 object Input {
+  type Input = Chunk[Byte]
 
-  sealed trait EncodedCommand {
-    val chunk: Chunk[Byte]
-
-    val command: BulkString
-
-    private[memcached] def asString: String = command.asString
-  }
-
-  case class Command(override val command: BulkString) extends EncodedCommand {
-    override val chunk: Chunk[Byte] = command.serialize
-  }
-
-  case class CommandAndValue(override val command: BulkString, value: BulkString) extends EncodedCommand {
-    override val chunk: Chunk[Byte] = command.serialize ++ value.serialize
-  }
-
-  private[memcached] val EmptyChunk: Chunk[Byte] = Chunk.empty
-  private[memcached] val WhitespaceChunk         = Chunk.fromArray(" ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val SpaceZeroSpaceChunk     = Chunk.fromArray(" 0 ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val GetWsChunk              = Chunk.fromArray("get ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val GetsWsChunk             = Chunk.fromArray("gets ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val TouchWsChunk            = Chunk.fromArray("touch ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val GatWsChunk              = Chunk.fromArray("gat ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val GatsWsChunk             = Chunk.fromArray("gats ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val SetWsChunk              = Chunk.fromArray("set ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val AddWsChunk              = Chunk.fromArray("add ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val AppendWsChunk           = Chunk.fromArray("append ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val PrependWsChunk          = Chunk.fromArray("prepend ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val ReplaceWsChunk          = Chunk.fromArray("replace ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val CasWsChunk              = Chunk.fromArray("cas ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val IncrWsChunk             = Chunk.fromArray("incr ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val DecrWsChunk             = Chunk.fromArray("decr ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val DeleteWsChunk           = Chunk.fromArray("delete ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val MgWsChunk               = Chunk.fromArray("mg ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val MsWsChunk               = Chunk.fromArray("ms ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val MdWsChunk               = Chunk.fromArray("md ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val MaWsChunk               = Chunk.fromArray("ma ".getBytes(StandardCharsets.US_ASCII))
-  private[memcached] val MeWsChunk               = Chunk.fromArray("me ".getBytes(StandardCharsets.US_ASCII))
+  private[memcached] val CrLfChunk = Chunk.fromArray("\r\n".getBytes())
 
   @inline
-  private[this] def encodeBytes[A](value: A)(implicit codec: Codec, schema: Schema[A]): BulkString =
-    BulkString(codec.encode(schema)(value))
+  private[this] def encodeBytes[A](value: A)(implicit codec: Codec, schema: Schema[A]): Chunk[Byte] =
+    codec.encode(schema)(value)
 
   val ThirtyDaysInSeconds: Long = 60 * 60 * 24 * 30
 
@@ -97,167 +47,144 @@ object Input {
           seconds
     }
 
-  final class GetCommand(override val key: String) extends Input[Unit] {
-    def encode(unit: Unit)(implicit codec: Codec): EncodedCommand =
-      Command(BulkString(GetWsChunk ++ keyChunk))
+  object GetCommand {
+    def apply(key: String): Input =
+      Chunk.fromArray(s"get $key\r\n".getBytes())
   }
 
-  final class GetsCommand(override val key: String) extends Input[Unit] {
-    def encode(unit: Unit)(implicit codec: Codec): EncodedCommand =
-      Command(BulkString(GetsWsChunk ++ keyChunk))
+  object GetsCommand {
+    def apply(key: String): Input =
+      Chunk.fromArray(s"gets $key\r\n".getBytes())
   }
 
-  final class TouchCommand(override val key: String) extends Input[Duration] {
-    def encode(expireTime: Duration)(implicit codec: Codec): EncodedCommand = {
-      val expireSeconds = durationToSeconds(expireTime)
-      Command(
-        BulkString(
-          TouchWsChunk ++ keyChunk ++ WhitespaceChunk ++
-            expireSeconds.toString.getBytes(StandardCharsets.US_ASCII)
-        )
-      )
+  object TouchCommand {
+    def apply(key: String, duration: Duration): Input = {
+      val expires = durationToSeconds(duration)
+      Chunk.fromArray(s"touch $key $expires\r\n".getBytes())
     }
   }
 
-  final class GatCommand(override val key: String) extends Input[Duration] {
-    def encode(expireTime: Duration)(implicit codec: Codec): EncodedCommand = {
-      val expireSeconds = durationToSeconds(expireTime)
-      Command(
-        BulkString(
-          GatWsChunk ++ expireSeconds.toString.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++ keyChunk
-        )
-      )
+  object GatCommand {
+    def apply(key: String, duration: Duration): Input = {
+      val expires = durationToSeconds(duration)
+      Chunk.fromArray(s"gat $expires $key\r\n".getBytes())
     }
   }
 
-  final class GatsCommand(override val key: String) extends Input[Duration] {
-    def encode(expireTime: Duration)(implicit codec: Codec): EncodedCommand = {
-      val expireSeconds = durationToSeconds(expireTime)
-      Command(
-        BulkString(
-          GatsWsChunk ++ expireSeconds.toString.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++
-            keyChunk
-        )
-      )
+  object GatsCommand {
+    def apply(key: String, duration: Duration): Input = {
+      val expires = durationToSeconds(duration)
+      Chunk.fromArray(s"gats $expires $key\r\n".getBytes())
     }
   }
 
-  abstract class GenericSetCommand[A: Schema]() extends Input[(A, Option[Duration])] {
-    protected val operationWsChunk: Chunk[Byte]
-
-    def encode(data: (A, Option[Duration]))(implicit codec: Codec): EncodedCommand = {
-      val (value, expireTime) = data
-      val expireSeconds       = expireTime.map(durationToSeconds).getOrElse(0L)
-      val encodedValue        = encodeBytes(value)
-      CommandAndValue(
-        BulkString(
-          operationWsChunk ++ keyChunk ++ SpaceZeroSpaceChunk ++
-            expireSeconds.toString.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++
-            encodedValue.length.toString.getBytes(StandardCharsets.US_ASCII)
-        ),
-        encodedValue
-      )
-    }
-  }
-
-  final class SetCommand[A: Schema](override val key: String) extends GenericSetCommand[A] {
-    override protected val operationWsChunk: Chunk[Byte] = SetWsChunk
-  }
-
-  final class AddCommand[A: Schema](override val key: String) extends GenericSetCommand[A] {
-    override protected val operationWsChunk: Chunk[Byte] = AddWsChunk
-  }
-
-  final class ReplaceCommand[A: Schema](override val key: String) extends GenericSetCommand[A] {
-    override protected val operationWsChunk: Chunk[Byte] = ReplaceWsChunk
-  }
-
-  final class AppendCommand[A: Schema](override val key: String) extends GenericSetCommand[A] {
-    override protected val operationWsChunk: Chunk[Byte] = AppendWsChunk
-  }
-
-  final class PrependCommand[A: Schema](override val key: String) extends GenericSetCommand[A] {
-    override protected val operationWsChunk: Chunk[Byte] = PrependWsChunk
-  }
-
-  final class CompareAndSetCommand[A: Schema](override val key: String)
-      extends Input[(A, CasUnique, Option[Duration])] {
-    def encode(data: (A, CasUnique, Option[Duration]))(implicit codec: Codec): EncodedCommand = {
-      val (value, casUnique, expireTime) = data
-      val expireSeconds = expireTime match {
-        case Some(value: Duration) => value.getSeconds
-        case None                  => 0L
-      }
+  object GenericSetCommand {
+    def apply[A: Schema](
+      command: String,
+      key: String,
+      expireTime: Option[Duration],
+      value: A
+    )(implicit codec: Codec): Input = {
+      val expires      = expireTime.map(durationToSeconds).getOrElse(0L)
       val encodedValue = encodeBytes(value)
-      CommandAndValue(
-        BulkString(
-          CasWsChunk ++ keyChunk ++ SpaceZeroSpaceChunk ++
-            expireSeconds.toString.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++
-            encodedValue.length.toString.getBytes(StandardCharsets.US_ASCII) ++ WhitespaceChunk ++
-            casUnique.value.toString.getBytes(StandardCharsets.US_ASCII)
-        ),
-        encodedValue
-      )
+      val header       = s"$command $key 0 $expires ${encodedValue.length}\r\n".getBytes()
+      GenericSetCommand(Chunk.fromArray(header), encodedValue)
+    }
+
+    def apply[A: Schema](
+      command: String,
+      key: String,
+      expireTime: Option[Duration],
+      cas: CasUnique,
+      value: A
+    )(implicit codec: Codec): Input = {
+      val expires      = expireTime.map(durationToSeconds).getOrElse(0L)
+      val encodedValue = encodeBytes(value)
+      val header       = s"$command $key 0 $expires ${encodedValue.length} ${cas.value}\r\n".getBytes()
+      GenericSetCommand(Chunk.fromArray(header), encodedValue)
+    }
+
+    def apply(header: Chunk[Byte], value: Chunk[Byte]): Chunk[Byte] = {
+      val builder = ChunkBuilder.make[Byte](header.length + value.length + 2)
+      builder ++= header
+      builder ++= value
+      builder ++= CrLfChunk
+      builder.result()
     }
   }
 
-  final class IncrementCommand(override val key: String) extends Input[Long] {
-    def encode(value: Long)(implicit codec: Codec): EncodedCommand =
-      Command(
-        BulkString(
-          IncrWsChunk ++ keyChunk ++ WhitespaceChunk ++
-            value.toString.getBytes(StandardCharsets.US_ASCII)
-        )
-      )
+  object SetCommand {
+    def apply[A: Schema](key: String, expireTime: Option[Duration], value: A)(implicit codec: Codec): Input =
+      GenericSetCommand("set", key, expireTime, value)
   }
 
-  final class DecrementCommand(override val key: String) extends Input[Long] {
-    def encode(value: Long)(implicit codec: Codec): EncodedCommand =
-      Command(
-        BulkString(
-          DecrWsChunk ++ keyChunk ++ WhitespaceChunk ++
-            value.toString.getBytes(StandardCharsets.US_ASCII)
-        )
-      )
+  object AddCommand {
+    def apply[A: Schema](key: String, expireTime: Option[Duration], value: A)(implicit codec: Codec): Input =
+      GenericSetCommand("add", key, expireTime, value)
   }
 
-  final class DeleteCommand(override val key: String) extends Input[Unit] {
-    def encode(unit: Unit)(implicit codec: Codec): EncodedCommand =
-      Command(BulkString(DeleteWsChunk ++ keyChunk))
+  object ReplaceCommand {
+    def apply[A: Schema](key: String, expireTime: Option[Duration], value: A)(implicit codec: Codec): Input =
+      GenericSetCommand("replace", key, expireTime, value)
   }
 
-  final class MetaGetCommand(override val key: String) extends Input[MetaGetFlags] {
-    def encode(flags: MetaGetFlags)(implicit codec: Codec): EncodedCommand =
-      Command(BulkString(MgWsChunk ++ keyChunk ++ flags.encoded))
+  object AppendCommand {
+    def apply[A: Schema](key: String, expireTime: Option[Duration], value: A)(implicit codec: Codec): Input =
+      GenericSetCommand("append", key, expireTime, value)
   }
 
-  final class MetaSetCommand[A: Schema](override val key: String) extends Input[(A, MetaSetFlags)] {
-    def encode(data: (A, MetaSetFlags))(implicit codec: Codec): EncodedCommand = {
-      val (value, flags) = data
-      val encodedValue   = encodeBytes(value)
-      val valueLength    = encodedValue.length.toString.getBytes(StandardCharsets.US_ASCII)
-      CommandAndValue(
-        BulkString(
-          MsWsChunk ++ keyChunk ++ WhitespaceChunk ++ valueLength ++ flags.encoded
-        ),
-        encodedValue
-      )
+  object PrependCommand {
+    def apply[A: Schema](key: String, expireTime: Option[Duration], value: A)(implicit codec: Codec): Input =
+      GenericSetCommand("prepend", key, expireTime, value)
+  }
+
+  object CompareAndSetCommand {
+    def apply[A: Schema](key: String, casUnique: CasUnique, expireTime: Option[Duration], value: A)(implicit
+      codec: Codec
+    ): Input =
+      GenericSetCommand("cas", key, expireTime, casUnique, value)
+  }
+
+  object IncrementCommand {
+    def apply(key: String, value: Long): Input =
+      Chunk.fromArray(s"incr $key $value\r\n".getBytes())
+  }
+
+  object DecrementCommand {
+    def apply(key: String, value: Long): Input =
+      Chunk.fromArray(s"decr $key $value\r\n".getBytes())
+  }
+
+  object DeleteCommand {
+    def apply(key: String): Input =
+      Chunk.fromArray(s"delete $key\r\n".getBytes())
+  }
+
+  object MetaGetCommand {
+    def apply(key: String, flags: MetaGetFlags): Input =
+      Chunk.fromArray(s"mg $key${flags.encoded}\r\n".getBytes())
+  }
+
+  object MetaSetCommand {
+    def apply[A: Schema](key: String, value: A, flags: MetaSetFlags)(implicit codec: Codec): Input = {
+      val encodedValue = encodeBytes(value)
+      val header       = s"ms $key ${encodedValue.length}${flags.encoded}\r\n".getBytes()
+      GenericSetCommand(Chunk.fromArray(header), encodedValue)
     }
   }
 
-  final class MetaDeleteCommand(override val key: String) extends Input[MetaDeleteFlags] {
-    def encode(flags: MetaDeleteFlags)(implicit codec: Codec): EncodedCommand =
-      Command(BulkString(MdWsChunk ++ keyChunk ++ flags.encoded))
+  object MetaDeleteCommand {
+    def apply(key: String, flags: MetaDeleteFlags): Input =
+      Chunk.fromArray(s"md $key${flags.encoded}\r\n".getBytes())
   }
 
-  final class MetaArithmeticCommand(override val key: String) extends Input[MetaArithmeticFlags] {
-    def encode(flags: MetaArithmeticFlags)(implicit codec: Codec): EncodedCommand =
-      Command(BulkString(MaWsChunk ++ keyChunk ++ flags.encoded))
+  object MetaArithmeticCommand {
+    def apply(key: String, flags: MetaArithmeticFlags): Input =
+      Chunk.fromArray(s"ma $key${flags.encoded}\r\n".getBytes())
   }
 
-  final class MetaDebugCommand(override val key: String) extends Input[MetaDebugFlags] {
-    def encode(flags: MetaDebugFlags)(implicit codec: Codec): EncodedCommand =
-      Command(BulkString(MeWsChunk ++ keyChunk ++ flags.encoded))
+  object MetaDebugCommand {
+    def apply(key: String, flags: MetaDebugFlags): Input =
+      Chunk.fromArray(s"me $key${flags.encoded}\r\n".getBytes())
   }
-
 }

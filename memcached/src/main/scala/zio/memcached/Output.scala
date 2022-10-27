@@ -53,7 +53,7 @@ object Output {
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Option[A] =
       respValue match {
         case RespValue.End => None
-        case RespValue.BulkStringWithHeader(_, RespValue.BulkString(s)) =>
+        case RespValue.BulkStringWithHeader(_, s) =>
           codec.decode(schema)(s).fold(e => throw CodecError(e), Some(_))
         case other => throw ProtocolError(s"$other isn't a SingleGetOutput")
       }
@@ -63,10 +63,7 @@ object Output {
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Option[(CasUnique, A)] =
       respValue match {
         case RespValue.End => None
-        case RespValue.BulkStringWithHeader(
-              ValueHeaderWithCas(_, _, _, casUnique: CasUnique),
-              RespValue.BulkString(s)
-            ) =>
+        case RespValue.BulkStringWithHeader(ValueHeaderWithCas(_, _, _, casUnique: CasUnique), s) =>
           codec.decode(schema)(s).fold(e => throw CodecError(e), Some(_)).map((casUnique, _))
         case other => throw ProtocolError(s"$other isn't a SingleGetWithCasOutput")
       }
@@ -122,7 +119,7 @@ object Output {
       respValue match {
         case RespValue.MetaResult(RespValue.NotFound, _, _) =>
           MetaGetResultNotFound()
-        case RespValue.MetaResult(_: RespValue, h: MetaValueHeader, Some(RespValue.BulkString(s))) =>
+        case RespValue.MetaResult(_: RespValue, h: MetaValueHeader, Some(s)) =>
           codec.decode(schema)(s).fold(e => throw CodecError(e), MetaGetResultSingle(_, h))
         case RespValue.MetaResult(_: RespValue, h: MetaValueHeader, None) =>
           MetaGetResultFlagsOnly(h)
@@ -159,12 +156,17 @@ object Output {
   }
 
   case object MetaArithmeticOutput extends Output[MetaArithmeticResult] {
+    import zio.Chunk
+
+    def chunkBytesToLong(bytes: Chunk[Byte]): Long =
+      new String(bytes.toArray).toLongOption.getOrElse(0L)
+
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): MetaArithmeticResult =
       respValue match {
         case RespValue.MetaResult(RespValue.Stored, h: MetaValueHeader, value) =>
-          MetaArithmeticResultSuccess(h, value.map(_.asLong))
+          MetaArithmeticResultSuccess(h, value.map(chunkBytesToLong))
         case RespValue.MetaResult(RespValue.Exists, h: MetaValueHeader, value) =>
-          MetaArithmeticResultExists(h, value.map(_.asLong))
+          MetaArithmeticResultExists(h, value.map(chunkBytesToLong))
         case RespValue.MetaResult(RespValue.NotFound, h: MetaValueHeader, None) =>
           MetaArithmeticResultNotFound(h)
         case RespValue.MetaResult(RespValue.NotStored, h: MetaValueHeader, None) =>

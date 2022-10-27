@@ -19,14 +19,14 @@ package zio.memcached
 import zio._
 import zio.stream.{Stream, ZStream}
 
-import java.io.{EOFException, IOException}
+import java.io.IOException
 import java.net.{InetSocketAddress, SocketAddress, StandardSocketOptions}
 import java.nio.ByteBuffer
 import java.nio.channels.{AsynchronousSocketChannel, Channel, CompletionHandler}
 
 private[memcached] trait ByteStream {
   def read: Stream[IOException, Byte]
-  def write(chunk: Chunk[Byte]): IO[IOException, Option[Unit]]
+  def write(chunk: Chunk[Byte]): IO[IOException, Unit]
 }
 
 private[memcached] object ByteStream {
@@ -90,39 +90,46 @@ private[memcached] object ByteStream {
   ) extends ByteStream {
 
     val read: Stream[IOException, Byte] =
-      ZStream.repeatZIOChunkOption {
-        val receive =
-          for {
-            _ <- ZIO.succeed(readBuffer.clear())
-            _ <- closeWith[Integer](channel)(channel.read(readBuffer, null, _)).filterOrFail(_ >= 0)(new EOFException())
-            chunk <- ZIO.succeed {
-                       readBuffer.flip()
-                       val count = readBuffer.remaining()
-                       val array = Array.ofDim[Byte](count)
-                       readBuffer.get(array)
-                       Chunk.fromArray(array)
-                     }
-          } yield chunk
+      ZStream.repeatZIOChunk {
+        ZIO.asyncInterrupt { k: (IO[IOException, Chunk[Byte]] => Unit) =>
+          readBuffer.clear()
+          channel.read(
+            readBuffer,
+            null,
+            new CompletionHandler[Integer, IO[IOException, Chunk[Byte]]] {
+              def completed(result: Integer, u: IO[IOException, Chunk[Byte]]): Unit = {
+                readBuffer.flip()
 
-        receive.mapError {
-          case _: EOFException => None
-          case e: IOException  => Some(e)
+                val count = readBuffer.remaining()
+                if (count <= 0) {
+                  k(ZIO.fail(new IOException("Connection closed.")))
+                } else {
+                  val bytes = Array.ofDim[Byte](count)
+                  readBuffer.get(bytes, 0, count)
+                  k(ZIO.succeedNow(Chunk.fromArray(bytes)))
+                }
+              }
+
+              def failed(t: Throwable, u: IO[IOException, Chunk[Byte]]): Unit =
+                t match {
+                  case e: IOException => k(ZIO.fail(e))
+                  case _              => k(ZIO.die(t))
+                }
+            }
+          )
+          Left(ZIO.attempt(channel.close()).ignore)
         }
       }
 
-    def write(chunk: Chunk[Byte]): IO[IOException, Option[Unit]] =
-      ZIO.when(chunk.nonEmpty) {
-        ZIO.suspendSucceed {
-          writeBuffer.clear()
-          val (c, remainder) = chunk.splitAt(writeBuffer.capacity())
-          writeBuffer.put(c.toArray)
-          writeBuffer.flip()
+    def write(chunk: Chunk[Byte]): IO[IOException, Unit] = {
+      writeBuffer.clear()
+      val (c, remainder) = chunk.splitAt(writeBuffer.capacity())
+      writeBuffer.put(c.toArray)
+      writeBuffer.flip()
 
-          closeWith[Integer](channel)(channel.write(writeBuffer, null, _))
-            .repeatWhile(_ => writeBuffer.hasRemaining)
-            .zipRight(write(remainder))
-            .map(_.getOrElse(()))
-        }
-      }
+      closeWith[Integer](channel)(channel.write(writeBuffer, null, _))
+        .repeatWhile(_ => writeBuffer.hasRemaining)
+        .zipRight(if (remainder.isEmpty) ZIO.unit else write(remainder))
+    }
   }
 }

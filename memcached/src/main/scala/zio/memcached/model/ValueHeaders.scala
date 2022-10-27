@@ -3,7 +3,9 @@ package zio.memcached.model
 object ValueHeaders {
   type MetaValueHeader = Map[Char, String]
 
-  sealed trait GenericValueHeader
+  sealed trait GenericValueHeader {
+    def bytes: Int
+  }
 
   def valueHeader(key: String, flags: String, bytes: String, casUnique: String): GenericValueHeader =
     Option(casUnique) match {

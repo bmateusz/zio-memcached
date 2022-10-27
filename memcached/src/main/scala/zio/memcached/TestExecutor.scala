@@ -1,25 +1,29 @@
 package zio.memcached
 
 import zio._
-import zio.memcached.Input.{EncodedCommand, ThirtyDaysInSeconds}
-import zio.memcached.RespValue.{BulkString, MetaDebugResult, MetaResult}
+import zio.memcached.Input.{Input, ThirtyDaysInSeconds}
+import zio.memcached.RespValue.{MetaDebugResult, MetaResult}
 import zio.memcached.TestExecutor.{InvalidNeedsRevalidation, KeyInfo}
 import zio.memcached.model.ValueHeaders.{ValueHeader, ValueHeaderWithCas}
 import zio.memcached.model.{CasUnique, MetaArithmeticFlags, MetaDeleteFlags, MetaGetFlags, MetaSetFlags}
 import zio.stm._
 
+import java.nio.charset.StandardCharsets
 import java.time.Instant
 
 private[memcached] final class TestExecutor(
   state: TMap[String, KeyInfo],
   casCounter: TRef[Long]
 ) extends MemcachedExecutor {
-  override def execute(hash: Int, command: EncodedCommand): IO[MemcachedError, RespValue] = {
-    val line = command.asString
-    val value = command match {
-      case Input.Command(_)                => None
-      case Input.CommandAndValue(_, value) => Some(value)
-    }
+
+  def commandAsString(value: Input): String =
+    new String(value.takeWhile(_ != '\r').toArray, StandardCharsets.US_ASCII)
+
+  def valueChunk(value: Input): Chunk[Byte] =
+    value.dropWhile(_ != '\r').drop(2).dropRight(2)
+
+  override def execute(hash: Int, input: Input): IO[MemcachedError, RespValue] = {
+    val line = commandAsString(input)
     val args = line.split(' ')
 
     val cmd = args.head
@@ -55,7 +59,7 @@ private[memcached] final class TestExecutor(
         val exp   = Some(args(3).toLong)
         // val bytes = args(4).toInt
         val casUnique = if (cmd == "cas") args(5).toLong else 0L
-        executeGenericSet(cmd, key, flags, exp, casUnique, value.get.value)
+        executeGenericSet(cmd, key, flags, exp, casUnique, valueChunk(input))
 
       case "incr" | "decr" =>
         val key    = args(1)
@@ -71,7 +75,7 @@ private[memcached] final class TestExecutor(
         val key = args(1)
         // val bytes = args(2)
         val flags = MetaSetFlags.fromString(args.drop(3).mkString(" "))
-        executeMetaSet(key, flags, value.get.value)
+        executeMetaSet(key, flags, valueChunk(input))
 
       case "md" =>
         val key   = args(1)
@@ -110,7 +114,7 @@ private[memcached] final class TestExecutor(
                 value.flags,
                 value.value.length
               ),
-            BulkString(value.value)
+            value.value
           )
         )
       case None =>
@@ -290,7 +294,7 @@ private[memcached] final class TestExecutor(
             MetaResult(
               RespValue.Stored,
               metaHeader,
-              if (flags.contains(MetaGetFlags.ReturnItemValue)) Some(BulkString(info.value)) else None
+              if (flags.contains(MetaGetFlags.ReturnItemValue)) Some(info.value) else None
             )
           )
         }
@@ -339,7 +343,7 @@ private[memcached] final class TestExecutor(
           Some(createItemOnMiss.seconds),
           flags.casToken.map(_.cas.value).getOrElse(0L),
           initialValue
-        ).as(RespValue.MetaResult(RespValue.Exists, Map.empty, Some(BulkString(initialValue))))
+        ).as(RespValue.MetaResult(RespValue.Exists, Map.empty, Some(initialValue)))
 
       case None =>
         executeIncrement(key, flags.delta.map(_.value).getOrElse(1L)).map {
@@ -348,7 +352,7 @@ private[memcached] final class TestExecutor(
               RespValue.Exists,
               Map.empty,
               if (flags.contains(MetaArithmeticFlags.ReturnItemValue))
-                Some(RespValue.BulkString(Chunk.fromArray(value.toString.getBytes())))
+                Some(Chunk.fromArray(value.toString.getBytes()))
               else
                 None
             )

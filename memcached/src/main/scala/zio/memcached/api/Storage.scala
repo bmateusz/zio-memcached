@@ -23,6 +23,7 @@ import zio.memcached._
 import zio.memcached.model.CasUnique
 import zio.memcached.model.UpdateResult.UpdateResult
 import zio.schema.Schema
+import zio.schema.codec.Codec
 
 trait Storage {
 
@@ -35,72 +36,88 @@ trait Storage {
    *   Returns the value of the string or None if it does not exist.
    */
   final def get[R: Schema](key: String): ZIO[Memcached, MemcachedError, Option[R]] =
-    MemcachedCommand(new GetCommand(key), SingleGetOutput[R]()).run(())
+    MemcachedCommand(key, GetCommand(key), SingleGetOutput[R]())
 
   final def getWithCas[R: Schema](key: String): ZIO[Memcached, MemcachedError, Option[(CasUnique, R)]] =
-    MemcachedCommand(new GetsCommand(key), SingleGetWithCasOutput[R]()).run(())
+    MemcachedCommand(key, GetsCommand(key), SingleGetWithCasOutput[R]())
 
   final def touch(key: String, expireTime: Duration): ZIO[Memcached, MemcachedError, Boolean] =
-    MemcachedCommand(new TouchCommand(key), TouchOutput).run(expireTime)
+    MemcachedCommand(key, TouchCommand(key, expireTime), TouchOutput)
 
   final def getAndTouch[R: Schema](key: String, expireTime: Duration): ZIO[Memcached, MemcachedError, Option[R]] =
-    MemcachedCommand(new GatCommand(key), SingleGetOutput[R]()).run(expireTime)
+    MemcachedCommand(key, GatCommand(key, expireTime), SingleGetOutput[R]())
 
   final def getAndTouchWithCas[R: Schema](
     key: String,
     expireTime: Duration
   ): ZIO[Memcached, MemcachedError, Option[(CasUnique, R)]] =
-    MemcachedCommand(new GatsCommand(key), SingleGetWithCasOutput[R]()).run(expireTime)
+    MemcachedCommand(key, GatsCommand(key, expireTime), SingleGetWithCasOutput[R]())
 
   final def set[V: Schema](
     key: String,
     value: V,
     expireTime: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, Boolean] =
-    MemcachedCommand(new SetCommand[V](key), SetOutput).run((value, expireTime))
+    ZIO.serviceWithZIO[Memcached] { memcached =>
+      implicit val codec: Codec = memcached.codec
+      MemcachedCommand(key, SetCommand[V](key, expireTime, value), SetOutput)
+    }
 
   final def add[V: Schema](
     key: String,
     value: V,
     expireTime: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, Boolean] =
-    MemcachedCommand(new AddCommand[V](key), SetOutput).run((value, expireTime))
+    ZIO.serviceWithZIO[Memcached] { memcached =>
+      implicit val codec: Codec = memcached.codec
+      MemcachedCommand(key, AddCommand[V](key, expireTime, value), SetOutput)
+    }
 
   final def replace[V: Schema](
     key: String,
     value: V,
     expireTime: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, Boolean] =
-    MemcachedCommand(new ReplaceCommand[V](key), SetOutput).run((value, expireTime))
+    ZIO.serviceWithZIO[Memcached] { memcached =>
+      implicit val codec: Codec = memcached.codec
+      MemcachedCommand(key, ReplaceCommand[V](key, expireTime, value), SetOutput)
+    }
 
   final def append[V: Schema](
     key: String,
     value: V,
     expireTime: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, Boolean] =
-    MemcachedCommand(new AppendCommand[V](key), SetOutput).run((value, expireTime))
-
+    ZIO.serviceWithZIO[Memcached] { memcached =>
+      implicit val codec: Codec = memcached.codec
+      MemcachedCommand(key, AppendCommand[V](key, expireTime, value), SetOutput)
+    }
   final def prepend[V: Schema](
     key: String,
     value: V,
     expireTime: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, Boolean] =
-    MemcachedCommand(new PrependCommand[V](key), SetOutput).run((value, expireTime))
-
+    ZIO.serviceWithZIO[Memcached] { memcached =>
+      implicit val codec: Codec = memcached.codec
+      MemcachedCommand(key, PrependCommand[V](key, expireTime, value), SetOutput)
+    }
   final def compareAndSet[V: Schema](
     key: String,
     value: V,
     casUnique: CasUnique,
     expireTime: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, UpdateResult] =
-    MemcachedCommand(new CompareAndSetCommand[V](key), UpdateResultOutput).run((value, casUnique, expireTime))
+    ZIO.serviceWithZIO[Memcached] { memcached =>
+      implicit val codec: Codec = memcached.codec
+      MemcachedCommand(key, CompareAndSetCommand[V](key, casUnique, expireTime, value), UpdateResultOutput)
+    }
 
   final def increment(key: String, value: Long): ZIO[Memcached, MemcachedError, Long] =
     if (value >= 0)
-      MemcachedCommand(new IncrementCommand(key), NumericOutput).run(value)
+      MemcachedCommand(key, IncrementCommand(key, value), NumericOutput)
     else
-      MemcachedCommand(new DecrementCommand(key), NumericOutput).run(-value)
+      MemcachedCommand(key, DecrementCommand(key, -value), NumericOutput)
 
   final def delete(key: String): ZIO[Memcached, MemcachedError, Boolean] =
-    MemcachedCommand(new DeleteCommand(key), DeleteOutput).run(())
+    MemcachedCommand(key, DeleteCommand(key), DeleteOutput)
 }

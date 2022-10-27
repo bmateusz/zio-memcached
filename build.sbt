@@ -59,7 +59,6 @@ lazy val benchmarks =
     .dependsOn(memcached)
     .settings(stdSettings("benchmarks"))
     .settings(
-      crossScalaVersions -= Scala3,
       publish / skip := true,
       libraryDependencies ++= List(
         "net.spy"   % "spymemcached"        % "2.12.3",
