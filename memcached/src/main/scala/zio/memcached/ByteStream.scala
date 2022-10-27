@@ -91,7 +91,7 @@ private[memcached] object ByteStream {
 
     val read: Stream[IOException, Byte] =
       ZStream.repeatZIOChunk {
-        ZIO.asyncInterrupt { k: (IO[IOException, Chunk[Byte]] => Unit) =>
+        ZIO.asyncInterrupt { (k: IO[IOException, Chunk[Byte]] => Unit) =>
           readBuffer.clear()
           channel.read(
             readBuffer,

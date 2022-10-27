@@ -159,7 +159,7 @@ object Output {
     import zio.Chunk
 
     def chunkBytesToLong(bytes: Chunk[Byte]): Long =
-      new String(bytes.toArray).toLongOption.getOrElse(0L)
+      new String(bytes.toArray).toLong
 
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): MetaArithmeticResult =
       respValue match {
