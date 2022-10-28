@@ -124,7 +124,7 @@ private[memcached] object ByteStream {
     def write(chunk: Chunk[Byte]): IO[IOException, Unit] = {
       writeBuffer.clear()
       val (c, remainder) = chunk.splitAt(writeBuffer.capacity())
-      writeBuffer.put(c.toArray)
+      c.foreach(writeBuffer.put)
       writeBuffer.flip()
 
       closeWith[Integer](channel)(channel.write(writeBuffer, null, _))
