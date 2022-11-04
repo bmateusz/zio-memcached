@@ -75,36 +75,39 @@ object MemcachedExecutor {
     def offer(request: Request): UIO[Boolean] =
       reqQueue.offer(request)
 
-    /**
-     * Opens a connection to the server and launches send and receive operations. All failures are retried by opening a
-     * new connection. Only exits by interruption or defect.
-     */
-    val run: IO[MemcachedError, Unit] =
-      (send.forever race receive)
-        .tapError(e => ZIO.logWarning(s"Reconnecting due to error: $e") *> drainWith(e))
-        .retryWhile(True)
-        .tapError(e => ZIO.logError(s"Executor exiting: $e"))
-
     private def drainWith(e: MemcachedError): UIO[Unit] = resQueue.takeAll.flatMap(ZIO.foreachDiscard(_)(_.fail(e)))
 
-    private def send: IO[MemcachedError.IOError, Unit] =
-      reqQueue.takeBetween(1, RequestQueueSize).flatMap { reqs =>
-        ZIO.foreachDiscard(reqs) { req =>
-          byteStream
-            .write(req.command)
-            .mapError(MemcachedError.IOError.apply)
-            .tapBoth(
-              e => req.promise.fail(e),
-              _ => resQueue.offer(req.promise)
-            )
+    private val send: IO[MemcachedError.IOError, Unit] =
+      reqQueue
+        .takeBetween(1, RequestQueueSize)
+        .flatMap { reqs =>
+          ZIO.foreachDiscard(reqs) { req =>
+            byteStream
+              .write(req.command)
+              .mapError(MemcachedError.IOError.apply)
+              .tapBoth(
+                e => req.promise.fail(e),
+                _ => resQueue.offer(req.promise)
+              )
+          }
         }
-      }
+        .forever
 
-    private def receive: IO[MemcachedError, Unit] =
+    private val receive: IO[MemcachedError, Unit] =
       byteStream.read
         .mapError(MemcachedError.IOError.apply)
         .via(RespValue.decoder)
         .collectSome
         .foreach(response => resQueue.take.flatMap(_.succeed(response)))
+
+    /**
+     * Opens a connection to the server and launches send and receive operations. All failures are retried by opening a
+     * new connection. Only exits by interruption or defect.
+     */
+    val run: IO[MemcachedError, Unit] =
+      (send race receive)
+        .tapError(e => ZIO.logWarning(s"Reconnecting due to error: $e") *> drainWith(e))
+        .retryWhile(True)
+        .tapError(e => ZIO.logError(s"Executor exiting: $e"))
   }
 }
