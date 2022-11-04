@@ -52,7 +52,7 @@ object MemcachedExecutor {
 
   private[this] final def singleStreamedExecutor(byteStream: ByteStream) =
     for {
-      reqQueue <- Queue.dropping[Request](RequestQueueSize)
+      reqQueue <- Queue.bounded[Request](RequestQueueSize)
       resQueue <- Queue.unbounded[Promise[MemcachedError, RespValue]]
       live      = new Node(reqQueue, resQueue, byteStream)
     } yield live
