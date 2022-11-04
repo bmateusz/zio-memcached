@@ -25,7 +25,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.{AsynchronousSocketChannel, Channel, CompletionHandler}
 
 private[memcached] trait ByteStream {
-  def read: Stream[IOException, Byte]
+  def read: Stream[IOException, Chunk[Byte]]
   def write(chunk: Chunk[Byte]): IO[IOException, Unit]
 }
 
@@ -89,8 +89,8 @@ private[memcached] object ByteStream {
     channel: AsynchronousSocketChannel
   ) extends ByteStream {
 
-    val read: Stream[IOException, Byte] =
-      ZStream.repeatZIOChunk {
+    override val read: Stream[IOException, Chunk[Byte]] =
+      ZStream.repeatZIO {
         ZIO.asyncInterrupt { (k: IO[IOException, Chunk[Byte]] => Unit) =>
           readBuffer.clear()
           channel.read(

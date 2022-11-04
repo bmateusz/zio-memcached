@@ -16,6 +16,7 @@
 
 package zio.memcached
 
+import zio.Chunk
 import zio.memcached.model.CasUnique
 import zio.memcached.model.MetaResult._
 import zio.memcached.model.UpdateResult.{Exists, NotFound, UpdateResult, Updated}
@@ -55,6 +56,15 @@ object Output {
         case RespValue.End => None
         case RespValue.BulkStringWithHeader(_, s) =>
           codec.decode(schema)(s).fold(e => throw CodecError(e), Some(_))
+        case other => throw ProtocolError(s"$other isn't a SingleGetOutput")
+      }
+  }
+
+  case object SingleChunkGetOutput extends Output[Option[Chunk[Byte]]] {
+    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Option[Chunk[Byte]] =
+      respValue match {
+        case RespValue.End => None
+        case RespValue.BulkStringWithHeader(_, s) => Some(s)
         case other => throw ProtocolError(s"$other isn't a SingleGetOutput")
       }
   }

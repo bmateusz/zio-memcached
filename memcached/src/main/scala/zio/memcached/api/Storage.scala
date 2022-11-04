@@ -38,6 +38,9 @@ trait Storage {
   final def get[R: Schema](key: String): ZIO[Memcached, MemcachedError, Option[R]] =
     MemcachedCommand(key, GetCommand(key), SingleGetOutput[R]())
 
+  final def getByteChunk(key: String): ZIO[Memcached, MemcachedError, Option[Chunk[Byte]]] =
+    MemcachedCommand(key, GetCommand(key), SingleChunkGetOutput)
+
   final def getWithCas[R: Schema](key: String): ZIO[Memcached, MemcachedError, Option[(CasUnique, R)]] =
     MemcachedCommand(key, GetsCommand(key), SingleGetWithCasOutput[R]())
 

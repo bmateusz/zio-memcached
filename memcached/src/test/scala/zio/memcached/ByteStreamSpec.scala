@@ -13,8 +13,8 @@ object ByteStreamSpec extends BaseSpec {
           stream   = streams.head
           data     = Chunk.fromArray("mn\r\n".getBytes())
           _       <- stream.write(data)
-          res     <- stream.read.take(4).runCollect
-        } yield assert(res)(equalTo(Chunk.fromArray("MN\r\n".getBytes())))
+          res     <- stream.read.take(1).runCollect
+        } yield assert(res)(equalTo(Chunk.single(Chunk.fromArray("MN\r\n".getBytes()))))
       }
     ).provideLayer(ByteStream.default)
 }

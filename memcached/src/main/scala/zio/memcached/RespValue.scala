@@ -51,7 +51,7 @@ object RespValue {
 
   case object Deleted extends RespValue
 
-  private[memcached] final val decoder = {
+  private[memcached] final val decoder: ZPipeline[Any, MemcachedError.ProtocolError, Chunk[Byte], Option[RespValue]] = {
     import internal.State
 
     // ZSink fold will return a State.Start when contFn is false
@@ -63,10 +63,7 @@ object RespValue {
         case other             => ZIO.dieMessage(s"Deserialization bug, should not get $other")
       }
 
-    ZPipeline
-      .splitOnChunk(internal.CrLfChunk)
-      .andThen(ZPipeline.mapChunks((chars: Chunk[Byte]) => Chunk.single(chars)))
-      .andThen(ZPipeline.fromSink(lineProcessor))
+    ZPipeline.fromSink(lineProcessor)
   }
 
   private object internal {
@@ -89,7 +86,28 @@ object RespValue {
           case _                => true
         }
 
-      final def feed(chars: Chunk[Byte]): State =
+      final def feed(charsWithCrLf: Chunk[Byte]): State = {
+        val chars = new String(charsWithCrLf.takeWhile(_ != '\r').toArray)
+        chars match {
+          case "" => Start
+          case "END" => Done(End)
+          case "STORED" => Done(Stored)
+          case "NOT_STORED" => Done(NotStored)
+          case "EXISTS" => Done(Exists)
+          case "NOT_FOUND" => Done(NotFound)
+          case "TOUCHED" => Done(Touched)
+          case "DELETED" => Done(Deleted)
+          case ValueRegex(key, flags, bytes, cas) =>
+            val header = valueHeader(key, flags, bytes, cas)
+            Done(BulkStringWithHeader(header, charsWithCrLf.drop(chars.length + 2).take(header.bytes)))
+          case other =>
+            println("other: " + other)
+            Failed
+        }
+      }
+
+        def feed2(charssss: Chunk[Byte]): State = {
+        val chars = charssss.dropRight(2)
         self match {
           case Start =>
             new String(chars.toArray) match {
@@ -182,6 +200,7 @@ object RespValue {
 
           case _ => Failed
         }
+      }
     }
 
     object State {

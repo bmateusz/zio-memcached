@@ -48,7 +48,7 @@ class GetBenchmarks extends BenchmarkRuntime {
   }
 
   @Benchmark
-  def zio(): Unit = execute(ZIO.foreachDiscard(items)(get[String](_)))
+  def zio(): Unit = execute(ZIO.foreachDiscard(items)(getByteChunk))
 
   @TearDown(Level.Trial)
   def tearDown(): Unit = {
