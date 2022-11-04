@@ -100,7 +100,7 @@
         payload.ttl = ttl.value;
       }
       if (!compareAndSet.disabled) {
-        payload.cas = compareAndSet.value;
+        payload.compareAndSet = compareAndSet.value;
       }
       if (!metaFlags.disabled) {
         payload.metaFlags = metaFlags.value;
