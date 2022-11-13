@@ -17,59 +17,51 @@
 package zio.memcached
 
 import zio._
+import zio.memcached.MemcachedError.IOError
 import zio.stream.{Stream, ZStream}
 
 import java.io.IOException
-import java.net.{InetSocketAddress, SocketAddress, StandardSocketOptions}
+import java.net.{SocketAddress, StandardSocketOptions}
 import java.nio.ByteBuffer
 import java.nio.channels.{AsynchronousSocketChannel, Channel, CompletionHandler}
 
 private[memcached] trait ByteStream {
-  def read: Stream[IOException, Byte]
-  def write(chunk: Chunk[Byte]): IO[IOException, Unit]
+  def read: Stream[MemcachedError.IOError, Byte]
+  def write(chunk: Chunk[Byte]): IO[MemcachedError.IOError, Unit]
 }
 
 private[memcached] object ByteStream {
-  lazy val customized: ZLayer[MemcachedConfig, MemcachedError.IOError, Chunk[ByteStream]] =
-    ZLayer.scoped {
-      for {
-        config  <- ZIO.service[MemcachedConfig]
-        service <- Chunk.fromIterable(config.nodes).mapZIO(node => connect(new InetSocketAddress(node.host, node.port)))
-      } yield service
-    }
-
-  lazy val default: ZLayer[Any, MemcachedError.IOError, Chunk[ByteStream]] =
-    ZLayer.succeed(MemcachedConfig.Default) >>> customized
-
   private[this] final val ResponseBufferSize = 1024
 
-  private[this] def closeWith[A](channel: Channel)(op: CompletionHandler[A, Any] => Any): IO[IOException, A] =
+  def ioErrorHandler(t: Throwable): IO[IOError, Nothing] = t match {
+    case e: IOException => ZIO.fail(IOError(e))
+    case _              => ZIO.die(t)
+  }
+
+  private[this] def closeWith[A](channel: Channel)(op: CompletionHandler[A, Any] => Any): IO[IOError, A] =
     ZIO.asyncInterrupt { k =>
       op(completionHandler(k))
       Left(ZIO.attempt(channel.close()).ignore)
     }
 
-  private[this] def connect(address: => SocketAddress): ZIO[Scope, MemcachedError.IOError, Connection] =
-    (for {
+  private[memcached] def connect(address: => SocketAddress): ZIO[Scope, IOError, Connection] =
+    for {
+      _           <- ZIO.logInfo(s"Connecting to $address")
       address     <- ZIO.succeed(address)
       makeBuffer   = ZIO.succeed(ByteBuffer.allocateDirect(ResponseBufferSize))
       readBuffer  <- makeBuffer
       writeBuffer <- makeBuffer
       channel     <- openChannel(address)
-    } yield new Connection(readBuffer, writeBuffer, channel)).mapError(MemcachedError.IOError.apply)
+    } yield new Connection(readBuffer, writeBuffer, channel)
 
-  private[this] def completionHandler[A](k: IO[IOException, A] => Unit): CompletionHandler[A, Any] =
+  private[this] def completionHandler[A](k: IO[IOError, A] => Unit): CompletionHandler[A, Any] =
     new CompletionHandler[A, Any] {
       def completed(result: A, u: Any): Unit = k(ZIO.succeedNow(result))
 
-      def failed(t: Throwable, u: Any): Unit =
-        t match {
-          case e: IOException => k(ZIO.fail(e))
-          case _              => k(ZIO.die(t))
-        }
+      def failed(t: Throwable, u: Any): Unit = k(ioErrorHandler(t))
     }
 
-  private[this] def openChannel(address: SocketAddress): ZIO[Scope, IOException, AsynchronousSocketChannel] =
+  private[this] def openChannel(address: SocketAddress): ZIO[Scope, IOError, AsynchronousSocketChannel] =
     ZIO.fromAutoCloseable {
       for {
         channel <- ZIO.attempt {
@@ -77,32 +69,37 @@ private[memcached] object ByteStream {
                      channel.setOption(StandardSocketOptions.SO_KEEPALIVE, Boolean.box(true))
                      channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.box(true))
                      channel
+                   }.mapError {
+                     case e: IOException => MemcachedError.IOError(e)
+                     case t              => throw t
                    }
         _ <- closeWith[Void](channel)(channel.connect(address, null, _))
-        _ <- ZIO.logInfo("Connected to the memcached server.")
+               .tapBoth(
+                 e => ZIO.logError(s"Failed to connect to $address: $e"),
+                 _ => ZIO.logInfo(s"Connected to the memcached server $address")
+               )
       } yield channel
-    }.refineToOrDie[IOException]
+    }
 
-  private[this] final class Connection(
+  private[memcached] final class Connection(
     readBuffer: ByteBuffer,
     writeBuffer: ByteBuffer,
     channel: AsynchronousSocketChannel
   ) extends ByteStream {
-
-    val read: Stream[IOException, Byte] =
+    override val read: Stream[MemcachedError.IOError, Byte] =
       ZStream.repeatZIOChunk {
-        ZIO.asyncInterrupt { (k: IO[IOException, Chunk[Byte]] => Unit) =>
+        ZIO.asyncInterrupt { (k: IO[MemcachedError.IOError, Chunk[Byte]] => Unit) =>
           readBuffer.clear()
           channel.read(
             readBuffer,
             null,
-            new CompletionHandler[Integer, IO[IOException, Chunk[Byte]]] {
-              def completed(result: Integer, u: IO[IOException, Chunk[Byte]]): Unit = {
+            new CompletionHandler[Integer, IO[MemcachedError, Chunk[Byte]]] {
+              def completed(result: Integer, u: IO[MemcachedError, Chunk[Byte]]): Unit = {
                 readBuffer.flip()
 
                 val count = readBuffer.remaining()
                 if (count <= 0) {
-                  k(ZIO.fail(new IOException("Connection closed.")))
+                  k(ZIO.fail(MemcachedError.IOError(new IOException("Connection closed."))))
                 } else {
                   val bytes = Array.ofDim[Byte](count)
                   readBuffer.get(bytes, 0, count)
@@ -110,26 +107,24 @@ private[memcached] object ByteStream {
                 }
               }
 
-              def failed(t: Throwable, u: IO[IOException, Chunk[Byte]]): Unit =
-                t match {
-                  case e: IOException => k(ZIO.fail(e))
-                  case _              => k(ZIO.die(t))
-                }
+              def failed(t: Throwable, u: IO[MemcachedError, Chunk[Byte]]): Unit =
+                k(ioErrorHandler(t))
             }
           )
           Left(ZIO.attempt(channel.close()).ignore)
         }
       }
 
-    def write(chunk: Chunk[Byte]): IO[IOException, Unit] = {
-      writeBuffer.clear()
-      val (c, remainder) = chunk.splitAt(writeBuffer.capacity())
-      c.foreach(writeBuffer.put)
-      writeBuffer.flip()
+    override def write(chunk: Chunk[Byte]): IO[MemcachedError.IOError, Unit] =
+      ZIO.suspendSucceed {
+        writeBuffer.clear()
+        val (c, remainder) = chunk.splitAt(writeBuffer.capacity())
+        writeBuffer.put(c.toArray)
+        writeBuffer.flip()
 
-      closeWith[Integer](channel)(channel.write(writeBuffer, null, _))
-        .repeatWhile(_ => writeBuffer.hasRemaining)
-        .zipRight(if (remainder.isEmpty) ZIO.unit else write(remainder))
-    }
+        closeWith[Integer](channel)(channel.write(writeBuffer, null, _))
+          .repeatWhile(_ => writeBuffer.hasRemaining)
+          .zipRight(if (remainder.isEmpty) ZIO.unit else write(remainder))
+      }
   }
 }

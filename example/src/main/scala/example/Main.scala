@@ -34,5 +34,9 @@ object Main extends ZIOAppDefault {
         MemcachedLive.layer,
         ZLayer.succeed[Codec](ProtobufCodec)
       )
+      .tapBoth(
+        err => ZIO.logError(s"Server failed with $err"),
+        _ => ZIO.never
+      )
       .exitCode
 }

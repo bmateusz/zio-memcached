@@ -34,8 +34,12 @@ object Api {
           case Right(body) =>
             ZIO
               .serviceWithZIO[MemcachedApi](_.executeCommand(command, body))
+              .tapError(err => ZIO.logError(s"Error executing command $command with body $body: $err"))
               .mapBoth(_.toResponse, r => Response.text(r))
               .merge
+              .catchAllCause { a =>
+                ZIO.logError(a.toString).as(Response.text(a.toString).setStatus(Status.InternalServerError))
+              }
         }
     }
 
