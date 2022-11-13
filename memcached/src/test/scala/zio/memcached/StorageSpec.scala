@@ -413,6 +413,16 @@ trait StorageSpec extends BaseSpec {
             result <- get[String](key)
           } yield assert(result)(isNone)
         }
+      ),
+      suite("interruption")(
+        test("immediate interruption handled") {
+          for {
+            key <- uuid
+            s <- set(key, "value").fork
+            _ <- s.interrupt
+            result <- get[String](key)
+          } yield assert(result)(isNone)
+        },
       )
     )
 }

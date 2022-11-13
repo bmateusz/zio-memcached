@@ -63,7 +63,10 @@ object MemcachedExecutor {
     def execute(hash: Int, command: Input): IO[MemcachedError, RespValue] =
       Promise
         .make[MemcachedError, RespValue]
-        .flatMap(promise => nodes(Math.abs(hash % length)).offer(Request(command, promise)) *> promise.await)
+        .flatMap { promise =>
+          (nodes(Math.abs(hash % length)).offer(Request(command, promise)) *> promise.await)
+            .onInterrupt(promise.fail(MemcachedError.Interrupted))
+        }
   }
 
   private[this] final class Node(
@@ -82,15 +85,16 @@ object MemcachedExecutor {
         .takeBetween(1, RequestQueueSize)
         .flatMap { reqs =>
           ZIO.foreachDiscard(reqs) { req =>
-            byteStream
-              .write(req.command)
-              .mapError(MemcachedError.IOError.apply)
-              .tapBoth(
-                e => req.promise.fail(e),
-                _ => resQueue.offer(req.promise)
-              )
+            ZIO.unlessZIO(req.promise.isDone)
+              byteStream
+                .write(req.command)
+                .mapError(MemcachedError.IOError.apply)
+                .tapBoth(
+                  e => req.promise.fail(e),
+                  _ => resQueue.offer(req.promise)
+                )
+            }
           }
-        }
         .forever
 
     private val receive: IO[MemcachedError, Unit] =
