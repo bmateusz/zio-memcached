@@ -18,6 +18,9 @@ package zio.memcached
 
 import zio._
 import zio.memcached.Input.Input
+import zio.stm.TRef
+
+import java.net.InetSocketAddress
 
 trait MemcachedExecutor {
   def execute(hash: Int, command: Input): IO[MemcachedError, RespValue]
@@ -25,39 +28,34 @@ trait MemcachedExecutor {
 
 object MemcachedExecutor {
   lazy val layer: ZLayer[MemcachedConfig, MemcachedError.IOError, MemcachedExecutor] =
-    ByteStream.customized >>> StreamedExecutor
+    ZLayer.scoped {
+      for {
+        config <- ZIO.service[MemcachedConfig]
+        node <- Chunk.fromIterable(config.nodes).mapZIOPar { configNode =>
+                  for {
+                    byteStream <- NodeDefinition(configNode)
+                    _          <- byteStream.run.forkScoped
+                    _          <- ZIO.logInfo(s"Registered node ${configNode.host}:${configNode.port}")
+                  } yield byteStream
+                }
+        _ <- ZIO.logInfo(s"Registered ${config.nodes.size} nodes")
+      } yield new Live(node)
+    }
 
   lazy val local: ZLayer[Any, MemcachedError.IOError, MemcachedExecutor] =
-    ByteStream.default >>> StreamedExecutor
+    ZLayer.succeed(MemcachedConfig.Default) >>> layer
 
-  lazy val test: ULayer[MemcachedExecutor] = TestExecutor.layer
+  lazy val test: ULayer[MemcachedExecutor] =
+    TestExecutor.layer
 
   private[memcached] final case class Request(
     command: Chunk[Byte],
     promise: Promise[MemcachedError, RespValue]
   )
 
-  private[this] final val True: Any => Boolean = _ => true
-
   private[this] final val RequestQueueSize = 16
 
-  private[this] final val StreamedExecutor: ZLayer[Chunk[ByteStream], Nothing, Live] =
-    ZLayer.scoped {
-      for {
-        byteStreams <- ZIO.service[Chunk[ByteStream]]
-        nodes       <- byteStreams.mapZIO(singleStreamedExecutor)
-        _           <- nodes.mapZIO(_.run.forkScoped)
-      } yield new Live(nodes)
-    }
-
-  private[this] final def singleStreamedExecutor(byteStream: ByteStream) =
-    for {
-      reqQueue <- Queue.bounded[Request](RequestQueueSize)
-      resQueue <- Queue.unbounded[Promise[MemcachedError, RespValue]]
-      live      = new Node(reqQueue, resQueue, byteStream)
-    } yield live
-
-  private[this] final class Live(nodes: Chunk[Node]) extends MemcachedExecutor {
+  private[this] final class Live(nodes: Chunk[NodeDefinition]) extends MemcachedExecutor {
     private val length = nodes.length
 
     def execute(hash: Int, command: Input): IO[MemcachedError, RespValue] =
@@ -69,37 +67,88 @@ object MemcachedExecutor {
         }
   }
 
+  private[this] object NodeDefinition {
+    private def singleStreamedExecutor(address: InetSocketAddress): ZIO[Scope, MemcachedError.IOError, Node] =
+      for {
+        byteStream <- ByteStream.connect(address)
+        reqQueue   <- Queue.bounded[Request](RequestQueueSize)
+        resQueue   <- Queue.unbounded[Promise[MemcachedError, RespValue]]
+        live        = new Node(reqQueue, resQueue, byteStream)
+      } yield live
+
+    def apply(nodeConfig: MemcachedConfig.MemcachedNode): ZIO[Scope, MemcachedError.IOError, NodeDefinition] = {
+      val address = new InetSocketAddress(nodeConfig.host, nodeConfig.port)
+      for {
+        initializedNode <- singleStreamedExecutor(address).mapBoth(_ => Option.empty[Node], s => Option(s)).merge
+        node            <- TRef.make(initializedNode).commit
+      } yield new NodeDefinition(address, node)
+    }
+  }
+
+  private[this] final class NodeDefinition(address: InetSocketAddress, node: TRef[Option[Node]]) {
+    private val runUntilFailure =
+      for {
+        optLive <- node.get.commit
+        live <- optLive match {
+                  case Some(value) =>
+                    ZIO.succeed(value)
+                  case None =>
+                    for {
+                      live <- NodeDefinition.singleStreamedExecutor(address)
+                      _    <- node.set(Some(live)).commit
+                    } yield live
+                }
+        running <- live.run.ignore
+        _       <- node.set(Option.empty[Node]).commit
+      } yield running
+
+    val run: ZIO[Scope, MemcachedError, Nothing] =
+      runUntilFailure
+        .retry(Schedule.spaced(5.second).jittered)
+        .forever
+
+    def offer(request: Request): IO[MemcachedError.NotConnected, Boolean] =
+      node.get.commit.flatMap {
+        case Some(node) => node.offer(request)
+        case None       => ZIO.fail(MemcachedError.NotConnected(s"Node $address is not connected"))
+      }
+  }
+
   private[this] final class Node(
     reqQueue: Queue[Request],
     resQueue: Queue[Promise[MemcachedError, RespValue]],
     byteStream: ByteStream
   ) {
-
     def offer(request: Request): UIO[Boolean] =
       reqQueue.offer(request)
 
     private def drainWith(e: MemcachedError): UIO[Unit] = resQueue.takeAll.flatMap(ZIO.foreachDiscard(_)(_.fail(e)))
 
-    private val send: IO[MemcachedError.IOError, Unit] =
+    /**
+     * The main loop of the executor. It reads requests from the request queue, sends them to the server in order.
+     */
+    private val send: IO[MemcachedError, Unit] =
       reqQueue
         .takeBetween(1, RequestQueueSize)
         .flatMap { reqs =>
           ZIO.foreachDiscard(reqs) { req =>
-            ZIO.unlessZIO(req.promise.isDone)
+            ZIO.unlessZIO(req.promise.isDone) {
               byteStream
                 .write(req.command)
-                .mapError(MemcachedError.IOError.apply)
                 .tapBoth(
                   e => req.promise.fail(e),
                   _ => resQueue.offer(req.promise)
                 )
             }
           }
+        }
         .forever
 
+    /**
+     * Receive responses from the server and fulfill the promises.
+     */
     private val receive: IO[MemcachedError, Unit] =
       byteStream.read
-        .mapError(MemcachedError.IOError.apply)
         .via(RespValue.decoder)
         .collectSome
         .foreach(response => resQueue.take.flatMap(_.succeed(response)))
@@ -108,10 +157,11 @@ object MemcachedExecutor {
      * Opens a connection to the server and launches send and receive operations. All failures are retried by opening a
      * new connection. Only exits by interruption or defect.
      */
-    val run: IO[MemcachedError, Unit] =
+    val run: ZIO[Scope, MemcachedError, Unit] =
       (send race receive)
-        .tapError(e => ZIO.logWarning(s"Reconnecting due to error: $e") *> drainWith(e))
-        .retryWhile(True)
-        .tapError(e => ZIO.logError(s"Executor exiting: $e"))
+        .tapBoth(
+          e => ZIO.logError(s"Connection failed with error: $e") *> drainWith(e),
+          _ => ZIO.logInfo("Connection closed") *> drainWith(MemcachedError.ConnectionClosed)
+        )
   }
 }

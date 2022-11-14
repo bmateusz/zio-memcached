@@ -28,10 +28,10 @@ trait MemcachedApi {
 
 final case class MemcachedApiLive(r: Memcached) extends MemcachedApi {
   def executeCommand(command: String, body: MemcachedRequest): ZIO[Memcached, ApiError, String] =
-    command match {
+    (command match {
       case "set" =>
         body.extractValue.flatMap { value =>
-          set(body.key, value, body.ttoAsDuration).map(_.toString).orDie
+          set(body.key, value, body.ttoAsDuration).map(_.toString)
         }
       case "get" =>
         get[String](body.key).pipe(handleGetOption)
@@ -39,7 +39,7 @@ final case class MemcachedApiLive(r: Memcached) extends MemcachedApi {
         getWithCas[String](body.key).pipe(handleGetOption)
       case "touch" =>
         body.extractTtl.flatMap { ttl =>
-          touch(body.key, ttl).map(_.toString).orDie
+          touch(body.key, ttl).map(_.toString)
         }
       case "getAndTouch" =>
         body.extractTtl.flatMap { ttl =>
@@ -50,67 +50,66 @@ final case class MemcachedApiLive(r: Memcached) extends MemcachedApi {
           getAndTouchWithCas[String](body.key, ttl).pipe(handleGetOption)
         }
       case "delete" =>
-        delete(body.key).map(_.toString).orDie
+        delete(body.key).map(_.toString)
       case "increase" =>
         body.extractLongValue.flatMap { value =>
-          increment(body.key, value).map(_.toString).orDie
+          increment(body.key, value).map(_.toString)
         }
       case "add" =>
         body.extractValue.flatMap { value =>
-          add(body.key, value, body.ttoAsDuration).map(_.toString).orDie
+          add(body.key, value, body.ttoAsDuration).map(_.toString)
         }
       case "replace" =>
         body.extractValue.flatMap { value =>
-          replace(body.key, value, body.ttoAsDuration).map(_.toString).orDie
+          replace(body.key, value, body.ttoAsDuration).map(_.toString)
         }
       case "append" =>
         body.extractValue.flatMap { value =>
-          append(body.key, value).map(_.toString).orDie
+          append(body.key, value).map(_.toString)
         }
       case "prepend" =>
         body.extractValue.flatMap { value =>
-          prepend(body.key, value).map(_.toString).orDie
+          prepend(body.key, value).map(_.toString)
         }
       case "compareAndSet" =>
         body.extractValue.flatMap { value =>
           body.extractCas.flatMap { cas =>
-            compareAndSet(body.key, value, cas, body.ttoAsDuration).map(_.toString).orDie
+            compareAndSet(body.key, value, cas, body.ttoAsDuration).map(_.toString)
           }
         }
       case "metaGet" =>
         body.extractMetaFlags.flatMap { flags =>
-          metaGet[String](body.key, MetaGetFlags.fromString(flags)).map(_.toString).orDie
+          metaGet[String](body.key, MetaGetFlags.fromString(flags)).map(_.toString)
         }
       case "metaSet" =>
         body.extractValue.flatMap { value =>
           body.extractMetaFlags.flatMap { flags =>
-            metaSet(body.key, value, MetaSetFlags.fromString(flags)).map(_.toString).orDie
+            metaSet(body.key, value, MetaSetFlags.fromString(flags)).map(_.toString)
           }
         }
       case "metaDelete" =>
         body.extractMetaFlags.flatMap { flags =>
-          metaDelete(body.key, MetaDeleteFlags.fromString(flags)).map(_.toString).orDie
+          metaDelete(body.key, MetaDeleteFlags.fromString(flags)).map(_.toString)
         }
       case "metaArithmetic" =>
         body.extractMetaFlags.flatMap { flags =>
-          metaArithmetic(body.key, MetaArithmeticFlags.fromString(flags)).map(_.toString).orDie
+          metaArithmetic(body.key, MetaArithmeticFlags.fromString(flags)).map(_.toString)
         }
       case "metaDebug" =>
         body.extractMetaFlags.flatMap { flags =>
-          metaDebug(body.key, MetaDebugFlags.fromString(flags)).map(_.toString).orDie
+          metaDebug(body.key, MetaDebugFlags.fromString(flags)).map(_.toString)
         }
       case _ =>
         ZIO.fail(ApiError.CommandNotFound)
+    }).refineOrDie {
+      case m: MemcachedError => ApiError.MemcachedError(m)
+      case a: ApiError       => a
     }
 
-  private def handleGetOption[A](zio: ZIO[Memcached, MemcachedError, Option[A]]): ZIO[Memcached, ApiError, String] =
-    zio.foldZIO(
-      _ => ZIO.fail(ApiError.CorruptedData),
-      {
-        case Some(s) => ZIO.succeed(s.toString)
-        case None    => ZIO.fail(ApiError.CacheMiss)
-      }
-    )
+  private def handleGetOption[A](
+    zio: ZIO[Memcached, MemcachedError, Option[A]]
+  ): ZIO[Memcached, MemcachedError, String] =
+    zio.map(_.map(_.toString).getOrElse("Cache miss"))
 }
 
 object MemcachedApiLive {
