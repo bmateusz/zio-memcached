@@ -31,7 +31,7 @@ object MemcachedExecutor {
     ZLayer.scoped {
       for {
         config <- ZIO.service[MemcachedConfig]
-        node <- Chunk.from(config.nodes).mapZIOPar { configNode =>
+        node <- Chunk.fromIterable(config.nodes).mapZIOPar { configNode =>
                   for {
                     byteStream <- NodeDefinition(configNode)
                     _          <- byteStream.run.forkScoped
