@@ -16,7 +16,7 @@
 
 package zio.memcached
 
-import zio.memcached.model.CasUnique
+import zio.memcached.model.{CasUnique, ValueWithCasUnique}
 import zio.memcached.model.MetaResult._
 import zio.memcached.model.UpdateResult.{Exists, NotFound, UpdateResult, Updated}
 import zio.memcached.model.ValueHeaders.{MetaValueHeader, ValueHeaderWithCas}
@@ -27,12 +27,7 @@ sealed trait Output[+A] {
   self =>
 
   private[memcached] final def unsafeDecode(respValue: RespValue)(implicit codec: Codec): A =
-    respValue match {
-      case RespValue.Error(msg) =>
-        throw MemcachedError.ProtocolError(msg)
-      case success =>
-        tryDecode(success)
-    }
+    tryDecode(respValue)
 
   protected def tryDecode(respValue: RespValue)(implicit codec: Codec): A
 
@@ -59,12 +54,12 @@ object Output {
       }
   }
 
-  final case class SingleGetWithCasOutput[A]()(implicit schema: Schema[A]) extends Output[Option[(CasUnique, A)]] {
-    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Option[(CasUnique, A)] =
+  final case class SingleGetWithCasOutput[A]()(implicit schema: Schema[A]) extends Output[Option[ValueWithCasUnique[A]]] {
+    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Option[ValueWithCasUnique[A]] =
       respValue match {
         case RespValue.End => None
         case RespValue.BulkStringWithHeader(ValueHeaderWithCas(_, _, _, casUnique: CasUnique), s) =>
-          codec.decode(schema)(s).fold(e => throw CodecError(e), Some(_)).map((casUnique, _))
+          codec.decode(schema)(s).fold(e => throw CodecError(e), Some(_)).map(new ValueWithCasUnique(_, casUnique))
         case other => throw ProtocolError(s"$other isn't a SingleGetWithCasOutput")
       }
   }
@@ -97,10 +92,11 @@ object Output {
       }
   }
 
-  case object NumericOutput extends Output[Long] {
-    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Long =
+  case object NumericOutput extends Output[Option[Long]] {
+    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Option[Long] =
       respValue match {
-        case RespValue.Numeric(i) => i
+        case RespValue.Numeric(i) => Some(i)
+        case RespValue.Error(_) | RespValue.NotFound => None
         case other                => throw ProtocolError(s"$other isn't a NumericOutput")
       }
   }

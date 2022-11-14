@@ -31,7 +31,7 @@ final case class MemcachedApiLive(r: Memcached) extends MemcachedApi {
     (command match {
       case "set" =>
         body.extractValue.flatMap { value =>
-          set(body.key, value, body.ttoAsDuration).map(_.toString)
+          set(body.key, value, body.ttlAsDuration).map(_.toString)
         }
       case "get" =>
         get[String](body.key).pipe(handleGetOption)
@@ -57,11 +57,11 @@ final case class MemcachedApiLive(r: Memcached) extends MemcachedApi {
         }
       case "add" =>
         body.extractValue.flatMap { value =>
-          add(body.key, value, body.ttoAsDuration).map(_.toString)
+          add(body.key, value, body.ttlAsDuration).map(_.toString)
         }
       case "replace" =>
         body.extractValue.flatMap { value =>
-          replace(body.key, value, body.ttoAsDuration).map(_.toString)
+          replace(body.key, value, body.ttlAsDuration).map(_.toString)
         }
       case "append" =>
         body.extractValue.flatMap { value =>
@@ -74,7 +74,7 @@ final case class MemcachedApiLive(r: Memcached) extends MemcachedApi {
       case "compareAndSet" =>
         body.extractValue.flatMap { value =>
           body.extractCas.flatMap { cas =>
-            compareAndSet(body.key, value, cas, body.ttoAsDuration).map(_.toString)
+            compareAndSet(body.key, value, cas, body.ttlAsDuration).map(_.toString)
           }
         }
       case "metaGet" =>

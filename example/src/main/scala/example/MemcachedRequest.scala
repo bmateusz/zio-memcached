@@ -35,7 +35,7 @@ final case class MemcachedRequest(
       case _: NumberFormatException => None
     }
 
-  def ttoAsDuration: Option[Duration] = ttl.flatMap(toLongOption).map(_.seconds)
+  def ttlAsDuration: Option[Duration] = ttl.flatMap(toLongOption).map(_.seconds)
 
   def extractValue: ZIO[Any, ApiError, String] =
     ZIO.fromOption(value).mapError(_ => ApiError.MissingMandatoryField("value"))
@@ -44,7 +44,7 @@ final case class MemcachedRequest(
     ZIO.fromOption(value.flatMap(toLongOption)).mapError(_ => ApiError.MissingMandatoryField("value (numeric)"))
 
   def extractTtl: ZIO[Any, ApiError, Duration] =
-    ZIO.fromOption(ttoAsDuration).mapError(_ => ApiError.MissingMandatoryField("ttl"))
+    ZIO.fromOption(ttlAsDuration).mapError(_ => ApiError.MissingMandatoryField("ttl"))
 
   def extractCas: ZIO[Any, ApiError, CasUnique] =
     ZIO

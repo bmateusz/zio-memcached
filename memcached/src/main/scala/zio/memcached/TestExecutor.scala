@@ -219,19 +219,23 @@ private[memcached] final class TestExecutor(
         ZIO.succeedNow(RespValue.Error(s"$other not implemented in executeGenericSet"))
     }
 
-  private def executeIncrement(key: String, amount: Long) =
+  private def executeIncrement(key: String, amount: Long): IO[MemcachedError, RespValue] =
     handlingExpiryOf(key) {
       case Some(original) =>
-        val number = new String(original.value.toArray).toLong
-        val result = Math.max(0, number + amount)
-        updateState(
-          Some(original),
-          key,
-          original.flags,
-          original.expireAt,
-          Chunk.fromArray(result.toString.getBytes)
-        )
-          .map(_ => RespValue.Numeric(result))
+        STM.attempt(new String(original.value.toArray).toLong)
+          .flatMap(number => {
+            val result = Math.max(0, number + amount)
+            updateState(
+              Some(original),
+              key,
+              original.flags,
+              original.expireAt,
+              Chunk.fromArray(result.toString.getBytes)
+            )
+              .map(_ => RespValue.Numeric(result))
+          })
+          .mapError(_ => RespValue.Error("CLIENT_ERROR cannot increment or decrement non-numeric value"))
+          .merge
       case None =>
         STM.succeedNow(RespValue.NotFound)
     }

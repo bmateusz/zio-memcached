@@ -314,7 +314,7 @@ trait StorageSpec extends BaseSpec {
             key             <- uuid
             _               <- set(key, "value")
             optValueWithCas <- getWithCas[String](key)
-            casRes          <- compareAndSet(key, "value2", optValueWithCas.get._1)
+            casRes          <- compareAndSet(key, "value2", optValueWithCas.get.casUnique)
             getRes          <- get[String](key)
           } yield assert(casRes)(equalTo(UpdateResult.Updated)) && assert(getRes)(isSome(equalTo("value2")))
         },
@@ -324,7 +324,7 @@ trait StorageSpec extends BaseSpec {
             _               <- set(key, "value")
             optValueWithCas <- getAndTouchWithCas[String](key, 1.day)
             _               <- set(key, "value2")
-            casRes          <- compareAndSet(key, "value3", optValueWithCas.get._1)
+            casRes          <- compareAndSet(key, "value3", optValueWithCas.get.casUnique)
             getRes          <- get[String](key)
           } yield assert(casRes)(equalTo(UpdateResult.Exists)) && assert(getRes)(isSome(equalTo("value2")))
         },
@@ -334,7 +334,7 @@ trait StorageSpec extends BaseSpec {
             _               <- set(key, "value")
             optValueWithCas <- getWithCas[String](key)
             _               <- delete(key)
-            casRes          <- compareAndSet(key, "value2", optValueWithCas.get._1)
+            casRes          <- compareAndSet(key, "value2", optValueWithCas.get.casUnique)
             getRes          <- get[String](key)
           } yield assert(casRes)(equalTo(UpdateResult.NotFound)) && assert(getRes)(isNone)
         }
@@ -346,7 +346,7 @@ trait StorageSpec extends BaseSpec {
             _      <- set(key, "1")
             incRes <- increment(key, 1)
             getRes <- get[String](key)
-          } yield assert(incRes)(equalTo(2L)) && assert(getRes)(isSome(equalTo("2")))
+          } yield assert(incRes)(isSome(equalTo(2L))) && assert(getRes)(isSome(equalTo("2")))
         },
         test("decrement number in string representation") {
           for {
@@ -354,7 +354,7 @@ trait StorageSpec extends BaseSpec {
             _      <- set(key, "6")
             incRes <- increment(key, -1)
             getRes <- get[String](key)
-          } yield assert(incRes)(equalTo(5L)) && assert(getRes)(isSome(equalTo("5")))
+          } yield assert(incRes)(isSome(equalTo(5L))) && assert(getRes)(isSome(equalTo("5")))
         },
         test("decrement number underflow in string representation") {
           for {
@@ -362,29 +362,31 @@ trait StorageSpec extends BaseSpec {
             _      <- set(key, "5")
             incRes <- increment(key, -6)
             getRes <- get[String](key)
-          } yield assert(incRes)(equalTo(0L)) && assert(getRes)(isSome(equalTo("0")))
-        } /*
+          } yield assert(incRes)(isSome(equalTo(0L))) && assert(getRes)(isSome(equalTo("0")))
+        },
+        /*
         test("increment number overflow in string representation") {
           for {
             key    <- uuid
             _      <- set(key, "9223372036854775807")
             incRes <- increment(key, 1)
             getRes <- get[String](key)
-          } yield assert(incRes)(equalTo(0L)) && assert(getRes)(isSome(equalTo("0")))
+          } yield assert(incRes)(isSome(equalTo(0L))) && assert(getRes)(isSome(equalTo("0")))
         },
         test("increment number in binary representation (results in error)") {
           for {
             key    <- uuid
             _      <- set(key, 1L)
             incRes <- increment(key, 1)
-          } yield assert(incRes)(equalTo(2L))
+          } yield assert(incRes)(isNone)
         },
+        */
         test("increment non existing key") {
           for {
             key    <- uuid
             incRes <- increment(key, 1L)
-          } yield assert(incRes)(equalTo(1L))
-        },*/
+          } yield assert(incRes)(isNone)
+        },
       ),
       suite("key validation")(
         test("invalid key (with space)") {
