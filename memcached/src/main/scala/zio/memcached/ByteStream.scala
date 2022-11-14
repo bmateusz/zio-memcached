@@ -27,7 +27,7 @@ import java.nio.channels.{AsynchronousSocketChannel, Channel, CompletionHandler}
 
 private[memcached] trait ByteStream {
   def read: Stream[MemcachedError.IOError, Byte]
-  def write(chunk: Chunk[Byte]): IO[MemcachedError.IOError, Unit]
+  def write(chunk: Chunk[Byte]): IO[MemcachedError, Unit]
 }
 
 private[memcached] object ByteStream {
@@ -115,8 +115,8 @@ private[memcached] object ByteStream {
         }
       }
 
-    override def write(chunk: Chunk[Byte]): IO[MemcachedError.IOError, Unit] =
-      ZIO.suspendSucceed {
+    override def write(chunk: Chunk[Byte]): IO[MemcachedError, Unit] =
+      ZIO.suspend {
         writeBuffer.clear()
         val (c, remainder) = chunk.splitAt(writeBuffer.capacity())
         writeBuffer.put(c.toArray)
@@ -125,6 +125,6 @@ private[memcached] object ByteStream {
         closeWith[Integer](channel)(channel.write(writeBuffer, null, _))
           .repeatWhile(_ => writeBuffer.hasRemaining)
           .zipRight(if (remainder.isEmpty) ZIO.unit else write(remainder))
-      }
+      }.mapError(err => MemcachedError.WriteError(err))
   }
 }

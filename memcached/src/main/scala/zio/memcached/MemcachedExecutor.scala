@@ -51,13 +51,7 @@ object MemcachedExecutor {
   private[memcached] final case class Request(
     command: Chunk[Byte],
     promise: Promise[MemcachedError, RespValue]
-  ) {
-    def commandAsString: String = command.map { c =>
-      if (c == 13) "\\r"
-      else if (c == 10) "\\n"
-      else c.toChar
-    }.mkString
-  }
+  )
 
   private[this] final val RequestQueueSize = 16
 
@@ -110,7 +104,7 @@ object MemcachedExecutor {
 
     val run: ZIO[Scope, MemcachedError, Nothing] =
       runUntilFailure
-        .retry(Schedule.linear(1.second).jittered)
+        .retry(Schedule.spaced(5.second).jittered)
         .forever
 
     def offer(request: Request): IO[MemcachedError.NotConnected, Boolean] =
@@ -125,7 +119,6 @@ object MemcachedExecutor {
     resQueue: Queue[Promise[MemcachedError, RespValue]],
     byteStream: ByteStream
   ) {
-
     def offer(request: Request): UIO[Boolean] =
       reqQueue.offer(request)
 
@@ -134,7 +127,7 @@ object MemcachedExecutor {
     /**
      * The main loop of the executor. It reads requests from the request queue, sends them to the server in order.
      */
-    private val send: IO[MemcachedError.IOError, Unit] =
+    private val send: IO[MemcachedError, Unit] =
       reqQueue
         .takeBetween(1, RequestQueueSize)
         .flatMap { reqs =>
@@ -158,13 +151,13 @@ object MemcachedExecutor {
       byteStream.read
         .via(RespValue.decoder)
         .collectSome
-        .foreach(response => ZIO.logInfo(s"Received $response") *> resQueue.take.flatMap(_.succeed(response)))
+        .foreach(response => resQueue.take.flatMap(_.succeed(response)))
 
     /**
      * Opens a connection to the server and launches send and receive operations. All failures are retried by opening a
      * new connection. Only exits by interruption or defect.
      */
-    def run: ZIO[Scope, MemcachedError, Unit] =
+    val run: ZIO[Scope, MemcachedError, Unit] =
       (send race receive)
         .tapBoth(
           e => ZIO.logError(s"Connection failed with error: $e") *> drainWith(e),
