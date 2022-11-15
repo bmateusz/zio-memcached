@@ -148,6 +148,14 @@ object MetaGetFlags {
 
   private val FlagWithValueRegex = """([NRTO])(.+)""".r
 
+  /**
+   * Create a new [[MetaGetFlags]] from a string of flags
+   *
+   * @param string
+   *   the string of flags
+   * @return
+   *   a [[MetaGetFlags]] object
+   */
   def fromString(string: String): MetaGetFlags =
     if (string.isEmpty) {
       empty

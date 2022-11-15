@@ -17,6 +17,5 @@
 package zio
 
 package object memcached extends api.Storage with api.Meta {
-
   type Id[+A] = A
 }

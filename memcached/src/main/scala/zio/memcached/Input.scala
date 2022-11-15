@@ -138,7 +138,7 @@ object Input {
       GenericSetCommand("prepend", key, expireTime, value)
   }
 
-  object CompareAndSetCommand {
+  object CompareAndSwapCommand {
     def apply[A: Schema](key: String, casUnique: CasUnique, expireTime: Option[Duration], value: A)(implicit
       codec: Codec
     ): Input =

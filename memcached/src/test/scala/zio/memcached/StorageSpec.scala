@@ -308,13 +308,13 @@ trait StorageSpec extends BaseSpec {
           } yield assert(prependResult)(isFalse) && assert(getResult)(isNone)
         }
       ),
-      suite("compare and set")(
+      suite("compare and swap")(
         test("cas updated") {
           for {
             key             <- uuid
             _               <- set(key, "value")
             optValueWithCas <- getWithCas[String](key)
-            casRes          <- compareAndSet(key, "value2", optValueWithCas.get.casUnique)
+            casRes          <- compareAndSwap(key, "value2", optValueWithCas.get.casUnique)
             getRes          <- get[String](key)
           } yield assert(casRes)(equalTo(UpdateResult.Updated)) && assert(getRes)(isSome(equalTo("value2")))
         },
@@ -324,7 +324,7 @@ trait StorageSpec extends BaseSpec {
             _               <- set(key, "value")
             optValueWithCas <- getAndTouchWithCas[String](key, 1.day)
             _               <- set(key, "value2")
-            casRes          <- compareAndSet(key, "value3", optValueWithCas.get.casUnique)
+            casRes          <- compareAndSwap(key, "value3", optValueWithCas.get.casUnique)
             getRes          <- get[String](key)
           } yield assert(casRes)(equalTo(UpdateResult.Exists)) && assert(getRes)(isSome(equalTo("value2")))
         },
@@ -334,7 +334,7 @@ trait StorageSpec extends BaseSpec {
             _               <- set(key, "value")
             optValueWithCas <- getWithCas[String](key)
             _               <- delete(key)
-            casRes          <- compareAndSet(key, "value2", optValueWithCas.get.casUnique)
+            casRes          <- compareAndSwap(key, "value2", optValueWithCas.get.casUnique)
             getRes          <- get[String](key)
           } yield assert(casRes)(equalTo(UpdateResult.NotFound)) && assert(getRes)(isNone)
         }
@@ -414,7 +414,7 @@ trait StorageSpec extends BaseSpec {
             _      <- s.interrupt
             result <- get[String](key)
           } yield assert(result)(isNone)
-        }
+        } @@ TestAspect.flaky
       )
     )
 }

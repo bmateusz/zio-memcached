@@ -1,16 +1,16 @@
 package zio.memcached.model
 
-object ValueHeaders {
+private[memcached] object ValueHeaders {
   type MetaValueHeader = Map[Char, String]
 
   sealed trait GenericValueHeader {
     def bytes: Int
   }
 
-  def valueHeader(key: String, flags: String, bytes: String, casUnique: String): GenericValueHeader =
-    Option(casUnique) match {
-      case Some(value) =>
-        ValueHeaderWithCas(key, flags.toInt, bytes.toInt, new CasUnique(value.toLong))
+  def valueHeader(key: String, flags: String, bytes: String, optCasUnique: Option[String]): GenericValueHeader =
+    optCasUnique match {
+      case Some(cas) =>
+        ValueHeaderWithCas(key, flags.toInt, bytes.toInt, new CasUnique(cas.toLong))
       case None =>
         ValueHeader(key, flags.toInt, bytes.toInt)
     }

@@ -1,5 +1,8 @@
 package zio.memcached.model
 
+/**
+ * Base class for all meta flags collection.
+ */
 abstract class MetaFlagsBase[T <: MetaFlagBase] {
   def flags: Seq[T]
 

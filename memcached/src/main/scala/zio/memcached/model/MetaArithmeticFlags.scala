@@ -134,6 +134,14 @@ object MetaArithmeticFlags {
 
   private val FlagWithValueRegex = """([CNJDTOM])(.+)""".r
 
+  /**
+   * Parse a string of flags into a [[MetaArithmeticFlags]] object
+   *
+   * @param string
+   *   the string of flags
+   * @return
+   *   a [[MetaArithmeticFlags]] object
+   */
   def fromString(string: String): MetaArithmeticFlags =
     if (string.isEmpty) {
       empty

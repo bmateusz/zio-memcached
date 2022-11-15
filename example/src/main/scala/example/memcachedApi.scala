@@ -71,10 +71,10 @@ final case class MemcachedApiLive(r: Memcached) extends MemcachedApi {
         body.extractValue.flatMap { value =>
           prepend(body.key, value).map(_.toString)
         }
-      case "compareAndSet" =>
+      case "compareAndSwap" =>
         body.extractValue.flatMap { value =>
           body.extractCas.flatMap { cas =>
-            compareAndSet(body.key, value, cas, body.ttlAsDuration).map(_.toString)
+            compareAndSwap(body.key, value, cas, body.ttlAsDuration).map(_.toString)
           }
         }
       case "metaGet" =>

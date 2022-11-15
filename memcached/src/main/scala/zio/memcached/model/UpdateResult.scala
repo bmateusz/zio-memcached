@@ -1,5 +1,8 @@
 package zio.memcached.model
 
+/**
+ * Result of the [[zio.memcached.api.Storage.compareAndSwap]] operation.
+ */
 object UpdateResult {
   sealed trait UpdateResult
 

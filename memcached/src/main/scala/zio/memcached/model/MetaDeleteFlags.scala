@@ -81,6 +81,14 @@ object MetaDeleteFlags {
 
   private val FlagWithValueRegex = """([COT])(.+)""".r
 
+  /**
+   * Create a new [[MetaDeleteFlags]] from a string of flags
+   *
+   * @param string
+   *   the string of flags
+   * @return
+   *   a [[MetaDeleteFlags]] object
+   */
   def fromString(string: String): MetaDeleteFlags =
     if (string.isEmpty) {
       empty

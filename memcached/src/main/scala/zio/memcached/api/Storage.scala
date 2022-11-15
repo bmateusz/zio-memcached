@@ -25,6 +25,10 @@ import zio.memcached.model.{CasUnique, ValueWithCasUnique}
 import zio.schema.Schema
 import zio.schema.codec.Codec
 
+/**
+ * Storage commands. See [[https://raw.githubusercontent.com/memcached/memcached/master/doc/protocol.txt]] for more
+ * details.
+ */
 trait Storage {
 
   /**
@@ -48,7 +52,7 @@ trait Storage {
    * @tparam R
    *   Type of the value
    * @return
-   *   Returns the value decoded and the unique "compare and set token" or None if it does not exist.
+   *   Returns the value decoded and the unique "compare and swap token" or None if it does not exist.
    */
   final def getWithCas[R: Schema](key: String): ZIO[Memcached, MemcachedError, Option[ValueWithCasUnique[R]]] =
     MemcachedCommand(key, GetsCommand(key), SingleGetWithCasOutput[R]())
@@ -91,7 +95,7 @@ trait Storage {
    * @tparam R
    *   Type of the value
    * @return
-   *   Returns the value decoded and the unique "compare and set token" or None if it does not exist.
+   *   Returns the value decoded and the unique "compare and swap token" or None if it does not exist.
    */
   final def getAndTouchWithCas[R: Schema](
     key: String,
@@ -220,9 +224,9 @@ trait Storage {
     }
 
   /**
-   * Conditional set the value of a key, encoding it as a `V`, if the unique "compare and set token" matches.
+   * Conditional set the value of a key, encoding it as a `V`, if the unique "compare and swap token" matches.
    *
-   * You can get the unique "compare and set token" by using the `getWithCas` method.
+   * You can get the unique "compare and swap token" by using the `getWithCas` method.
    *
    * @param key
    *   Key to change the value of
@@ -233,10 +237,10 @@ trait Storage {
    * @tparam V
    *   Type of the value
    * @return
-   *   Returns `Updated` if the value was changed, `Exists` if the value was found, but the "compare and set token" did
+   *   Returns `Updated` if the value was changed, `Exists` if the value was found, but the "compare and swap token" did
    *   not match, and `NotFound` if the value was not found.
    */
-  final def compareAndSet[V: Schema](
+  final def compareAndSwap[V: Schema](
     key: String,
     value: V,
     casUnique: CasUnique,
@@ -244,7 +248,7 @@ trait Storage {
   ): ZIO[Memcached, MemcachedError, UpdateResult] =
     ZIO.serviceWithZIO[Memcached] { memcached =>
       implicit val codec: Codec = memcached.codec
-      MemcachedCommand(key, CompareAndSetCommand[V](key, casUnique, expiration, value), UpdateResultOutput)
+      MemcachedCommand(key, CompareAndSwapCommand[V](key, casUnique, expiration, value), UpdateResultOutput)
     }
 
   /**

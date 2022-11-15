@@ -134,6 +134,14 @@ object MetaSetFlags {
 
   private val FlagWithValueRegex = """([CFOT])(.+)""".r
 
+  /**
+   * Create a new [[MetaSetFlags]] from a string of flags
+   *
+   * @param string
+   *   the string of flags
+   * @return
+   *   a [[MetaSetFlags]] object
+   */
   def fromString(string: String): MetaSetFlags =
     if (string.isEmpty) {
       empty

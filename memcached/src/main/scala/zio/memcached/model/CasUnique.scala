@@ -1,9 +1,10 @@
 package zio.memcached.model
 
-class CasUnique(val value: Long) extends AnyVal {
-  override def toString: String = s"CasUnique($value)"
-}
-
-object CasUnique {
-  def apply(value: Long): CasUnique = new CasUnique(value)
-}
+/**
+ * A "compare and swap token" which can be passed to [[zio.memcached.api.Storage.compareAndSwap]] to update the value if
+ * it has not changed.
+ *
+ * @param value
+ *   The numeric value of the token
+ */
+case class CasUnique(value: Long) extends AnyVal

@@ -102,7 +102,7 @@ object RespValue {
               case "TOUCHED"    => Done(Touched)
               case "DELETED"    => Done(Deleted)
               case ValueRegex(key, flags, bytes, cas) =>
-                val header = valueHeader(key, flags, bytes, cas)
+                val header = valueHeader(key, flags, bytes, Option(cas))
                 CollectingValue(bytes.toInt, ChunkBuilder.make[Byte](header.bytes), header)
               case ErrorRegex(err) =>
                 Done(Error(err))

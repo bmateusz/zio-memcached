@@ -26,6 +26,14 @@ object MetaDebugFlags {
 
   val empty = new MetaDebugFlags(Seq.empty)
 
+  /**
+   * Create a new [[MetaDebugFlags]] from a string of flags
+   *
+   * @param string
+   *   the string of flags
+   * @return
+   *   a [[MetaDebugFlags]] object
+   */
   def fromString(string: String): MetaDebugFlags =
     if (string.isEmpty) {
       empty

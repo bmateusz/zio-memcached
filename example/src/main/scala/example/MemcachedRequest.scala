@@ -24,7 +24,7 @@ final case class MemcachedRequest(
   key: String,
   value: Option[String],
   ttl: Option[String],
-  compareAndSet: Option[String],
+  compareAndSwap: Option[String],
   metaFlags: Option[String]
 ) {
   // for Scala 2.12
@@ -48,8 +48,8 @@ final case class MemcachedRequest(
 
   def extractCas: ZIO[Any, ApiError, CasUnique] =
     ZIO
-      .fromOption(compareAndSet.flatMap(toLongOption))
-      .mapBoth(_ => ApiError.MissingMandatoryField("compareAndSet"), CasUnique.apply)
+      .fromOption(compareAndSwap.flatMap(toLongOption))
+      .mapBoth(_ => ApiError.MissingMandatoryField("compareAndSwap"), CasUnique.apply)
 
   def extractMetaFlags: ZIO[Any, ApiError, String] =
     ZIO.fromOption(metaFlags).mapError(_ => ApiError.MissingMandatoryField("metaFlags"))

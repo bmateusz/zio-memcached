@@ -117,9 +117,9 @@ object Output {
         case RespValue.MetaResult(RespValue.NotFound, _, _) =>
           MetaGetResultNotFound()
         case RespValue.MetaResult(_: RespValue, h: MetaValueHeader, Some(s)) =>
-          codec.decode(schema)(s).fold(e => throw CodecError(e), MetaGetResultSingle(_, h))
+          codec.decode(schema)(s).fold(e => throw CodecError(e), MetaGetResultValue(_, h))
         case RespValue.MetaResult(_: RespValue, h: MetaValueHeader, None) =>
-          MetaGetResultFlagsOnly(h)
+          MetaGetResultHeadersOnly(h)
         case other => throw ProtocolError(s"$other isn't a MetaGetOutput")
       }
   }
@@ -172,13 +172,13 @@ object Output {
       }
   }
 
-  case object MetaDebugOutput extends Output[Option[Map[String, String]]] {
-    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Option[Map[String, String]] =
+  case object MetaDebugOutput extends Output[MetaDebugResult] {
+    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): MetaDebugResult =
       respValue match {
         case RespValue.MetaDebugResult(value) =>
-          Some(value)
+          MetaDebugResultSuccess(value)
         case RespValue.MetaResult(RespValue.NotFound, _, _) =>
-          None
+          MetaDebugResultNotFound
         case other => throw ProtocolError(s"$other isn't a MetaDebugOutput")
       }
   }

@@ -51,7 +51,7 @@
     <option value="append">append</option>
     <option value="prepend">prepend</option>
     <option value="replace">replace</option>
-    <option value="compareAndSet">compareAndSet</option>
+    <option value="compareAndSwap">compareAndSwap</option>
     <option value="metaGet">metaGet</option>
     <option value="metaSet">metaSet</option>
     <option value="metaDelete">metaDelete</option>
@@ -61,7 +61,7 @@
   <label for="key">Key</label><input type="text" id="key" placeholder="key" value="foo">
   <label for="value">Value</label><textarea id="value" placeholder="value">bar</textarea>
   <label for="ttl">TTL</label><input type="text" id="ttl" placeholder="time to live in seconds">
-  <label for="compareAndSet">CAS</label><input type="text" id="compareAndSet" placeholder="unique CAS value" disabled>
+  <label for="compareAndSwap">CAS</label><input type="text" id="compareAndSwap" placeholder="unique CAS value" disabled>
   <label for="metaFlags">Meta Flags, see: <a href="https://raw.githubusercontent.com/memcached/memcached/master/doc/protocol.txt">memcached/protocol.txt</a><span id="exampleWithLabel" style="display: none"> , example: <span id="example"></span></span></label><input type="text" id="metaFlags" placeholder="meta flags" disabled>
   <button id="send">Send</button>
   <h2>Result</h2>
@@ -72,7 +72,7 @@
     const value = document.getElementById('value');
     const ttl = document.getElementById('ttl');
     const result = document.getElementById('result');
-    const compareAndSet = document.getElementById('compareAndSet');
+    const compareAndSwap = document.getElementById('compareAndSwap');
     const metaFlags = document.getElementById('metaFlags');
     const example = document.getElementById('example');
     const exampleWithLabel = document.getElementById('exampleWithLabel');
@@ -99,8 +99,8 @@
       if (!ttl.disabled) {
         payload.ttl = ttl.value;
       }
-      if (!compareAndSet.disabled) {
-        payload.compareAndSet = compareAndSet.value;
+      if (!compareAndSwap.disabled) {
+        payload.compareAndSwap = compareAndSwap.value;
       }
       if (!metaFlags.disabled) {
         payload.metaFlags = metaFlags.value;
@@ -117,7 +117,7 @@
 
     const commandChangeHandler = () => {
       const cmd = command.value;
-      compareAndSet.disabled = true;
+      compareAndSwap.disabled = true;
       metaFlags.disabled = !cmd.startsWith('meta');
       if (cmd.startsWith('getAndTouch') || cmd === 'touch') {
         value.disabled = true;
@@ -131,8 +131,8 @@
       } else {
         value.disabled = false;
         ttl.disabled = false;
-        if (cmd === 'compareAndSet') {
-          compareAndSet.disabled = false;
+        if (cmd === 'compareAndSwap') {
+          compareAndSwap.disabled = false;
         }
       }
 

@@ -9,14 +9,39 @@ object MetaResult {
     def getValue: Option[A]
   }
 
-  case class MetaGetResultSingle[A](value: A, headers: MetaValueHeader) extends MetaGetResult[A] {
+  /**
+   * Successful result of a get command, including the value and the headers. Expect this output if you requested the
+   * value with the [[zio.memcached.model.MetaGetFlags.ReturnItemValue]] flag.
+   *
+   * @param value
+   *   the value
+   * @param headers
+   *   the headers of the value
+   * @tparam A
+   *   the type of the value
+   */
+  case class MetaGetResultValue[A](value: A, headers: MetaValueHeader) extends MetaGetResult[A] {
     override def getValue: Option[A] = Some(value)
   }
 
-  case class MetaGetResultFlagsOnly[A](headers: MetaValueHeader) extends MetaGetResult[A] {
+  /**
+   * Successful result of a get command, including the headers only.
+   *
+   * @param headers
+   *   the headers of the value
+   * @tparam A
+   *   the type of the value (not used, nothing to decode)
+   */
+  case class MetaGetResultHeadersOnly[A](headers: MetaValueHeader) extends MetaGetResult[A] {
     override def getValue: Option[A] = None
   }
 
+  /**
+   * Failure result of a get command, the value does not exist.
+   *
+   * @tparam A
+   *   the type of the value (not used, nothing to decode)
+   */
   case class MetaGetResultNotFound[A]() extends MetaGetResult[A] {
     override def headers: MetaValueHeader = Map.empty
 
@@ -61,6 +86,16 @@ object MetaResult {
 
   case class MetaArithmeticResultNotStored(headers: MetaValueHeader) extends MetaArithmeticResult {
     override val value: Option[Long] = None
+  }
+
+  sealed trait MetaDebugResult {
+    def headers: Map[String, String]
+  }
+
+  case class MetaDebugResultSuccess(headers: Map[String, String]) extends MetaDebugResult
+
+  case object MetaDebugResultNotFound extends MetaDebugResult {
+    override def headers: Map[String, String] = Map.empty
   }
 
 }
