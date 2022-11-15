@@ -20,8 +20,8 @@ import zio._
 import zio.memcached.Input._
 import zio.memcached.Output._
 import zio.memcached._
-import zio.memcached.model.{CasUnique, ValueWithCasUnique}
 import zio.memcached.model.UpdateResult.UpdateResult
+import zio.memcached.model.{CasUnique, ValueWithCasUnique}
 import zio.schema.Schema
 import zio.schema.codec.Codec
 
@@ -195,7 +195,6 @@ trait Storage {
       MemcachedCommand(key, AppendCommand[V](key, expiration, value), SetOutput)
     }
 
-
   /**
    * Prepend the value of a key, encoding it as a `V`. It does a simple string prepend.
    *
@@ -234,7 +233,8 @@ trait Storage {
    * @tparam V
    *   Type of the value
    * @return
-   *   Returns `Updated` if the value was changed, `Exists` if the value was found, but the "compare and set token" did not match, and `NotFound` if the value was not found.
+   *   Returns `Updated` if the value was changed, `Exists` if the value was found, but the "compare and set token" did
+   *   not match, and `NotFound` if the value was not found.
    */
   final def compareAndSet[V: Schema](
     key: String,

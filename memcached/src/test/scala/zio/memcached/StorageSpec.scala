@@ -364,15 +364,6 @@ trait StorageSpec extends BaseSpec {
             getRes <- get[String](key)
           } yield assert(incRes)(isSome(equalTo(0L))) && assert(getRes)(isSome(equalTo("0")))
         },
-        /*
-        test("increment number overflow in string representation") {
-          for {
-            key    <- uuid
-            _      <- set(key, "9223372036854775807")
-            incRes <- increment(key, 1)
-            getRes <- get[String](key)
-          } yield assert(incRes)(isSome(equalTo(0L))) && assert(getRes)(isSome(equalTo("0")))
-        },
         test("increment number in binary representation (results in error)") {
           for {
             key    <- uuid
@@ -380,13 +371,12 @@ trait StorageSpec extends BaseSpec {
             incRes <- increment(key, 1)
           } yield assert(incRes)(isNone)
         },
-        */
         test("increment non existing key") {
           for {
             key    <- uuid
             incRes <- increment(key, 1L)
           } yield assert(incRes)(isNone)
-        },
+        }
       ),
       suite("key validation")(
         test("invalid key (with space)") {

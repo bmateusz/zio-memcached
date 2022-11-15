@@ -27,7 +27,7 @@ sealed trait RespValue
 object RespValue {
   final case class Error(value: String) extends RespValue
 
-  final case class Numeric(value: Long) extends RespValue
+  final case class Numeric(value: String) extends RespValue
 
   final case class Array(values: Chunk[BulkStringWithHeader]) extends RespValue
 
@@ -74,7 +74,7 @@ object RespValue {
     final val EndChunk: Chunk[Byte]  = Chunk('E', 'N', 'D')
     final val ValueRegex: Regex      = "^VALUE (\\S+) (\\d+) (\\d+) ?(\\d+)?$".r
     final val MetaValueRegex: Regex  = "^([a-zA-Z]{2})\\s?(.+)*$".r
-    final val ErrorRegex: Regex      = "^(?:CLIENT_|SERVER_)?ERROR.*$".r
+    final val ErrorRegex: Regex      = "^((?:CLIENT_ERROR|SERVER_ERROR|ERROR).*)$".r
     final val NumericRegex: Regex    = "^\\s*(\\d+)\\s*$".r
     final val KeyValueRegex: Regex   = "^(\\S+)=(\\S+)$".r
 
@@ -104,6 +104,8 @@ object RespValue {
               case ValueRegex(key, flags, bytes, cas) =>
                 val header = valueHeader(key, flags, bytes, cas)
                 CollectingValue(bytes.toInt, ChunkBuilder.make[Byte](header.bytes), header)
+              case ErrorRegex(err) =>
+                Done(Error(err))
               case MetaValueRegex(command, flags) =>
                 command match {
                   case "VA" =>
@@ -139,9 +141,7 @@ object RespValue {
                     Failed
                 }
               case NumericRegex(value) =>
-                Done(Numeric(value.toLong))
-              case err @ ErrorRegex() =>
-                Done(Error(err))
+                Done(Numeric(value))
               case _ =>
                 Failed
             }

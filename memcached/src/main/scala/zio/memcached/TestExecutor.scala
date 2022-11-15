@@ -222,8 +222,9 @@ private[memcached] final class TestExecutor(
   private def executeIncrement(key: String, amount: Long): IO[MemcachedError, RespValue] =
     handlingExpiryOf(key) {
       case Some(original) =>
-        STM.attempt(new String(original.value.toArray).toLong)
-          .flatMap(number => {
+        STM
+          .attempt(new String(original.value.toArray).toLong)
+          .flatMap { number =>
             val result = Math.max(0, number + amount)
             updateState(
               Some(original),
@@ -232,8 +233,8 @@ private[memcached] final class TestExecutor(
               original.expireAt,
               Chunk.fromArray(result.toString.getBytes)
             )
-              .map(_ => RespValue.Numeric(result))
-          })
+              .map(_ => RespValue.Numeric(result.toString))
+          }
           .mapError(_ => RespValue.Error("CLIENT_ERROR cannot increment or decrement non-numeric value"))
           .merge
       case None =>

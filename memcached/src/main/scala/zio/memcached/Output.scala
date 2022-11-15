@@ -16,10 +16,10 @@
 
 package zio.memcached
 
-import zio.memcached.model.{CasUnique, ValueWithCasUnique}
 import zio.memcached.model.MetaResult._
 import zio.memcached.model.UpdateResult.{Exists, NotFound, UpdateResult, Updated}
 import zio.memcached.model.ValueHeaders.{MetaValueHeader, ValueHeaderWithCas}
+import zio.memcached.model.{CasUnique, ValueWithCasUnique}
 import zio.schema.Schema
 import zio.schema.codec.Codec
 
@@ -54,7 +54,8 @@ object Output {
       }
   }
 
-  final case class SingleGetWithCasOutput[A]()(implicit schema: Schema[A]) extends Output[Option[ValueWithCasUnique[A]]] {
+  final case class SingleGetWithCasOutput[A]()(implicit schema: Schema[A])
+      extends Output[Option[ValueWithCasUnique[A]]] {
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Option[ValueWithCasUnique[A]] =
       respValue match {
         case RespValue.End => None
@@ -95,9 +96,9 @@ object Output {
   case object NumericOutput extends Output[Option[Long]] {
     protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Option[Long] =
       respValue match {
-        case RespValue.Numeric(i) => Some(i)
+        case RespValue.Numeric(i)                    => Some(i.toLong)
         case RespValue.Error(_) | RespValue.NotFound => None
-        case other                => throw ProtocolError(s"$other isn't a NumericOutput")
+        case other                                   => throw ProtocolError(s"$other isn't a NumericOutput")
       }
   }
 
