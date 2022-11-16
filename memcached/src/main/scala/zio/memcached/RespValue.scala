@@ -73,7 +73,7 @@ object RespValue {
     final val CrLfChunk: Chunk[Byte] = Chunk('\r', '\n')
     final val EndChunk: Chunk[Byte]  = Chunk('E', 'N', 'D')
     final val ValueRegex: Regex      = "^VALUE (\\S+) (\\d+) (\\d+) ?(\\d+)?$".r
-    final val MetaValueRegex: Regex  = "^([a-zA-Z]{2})\\s+(.+)*$".r
+    final val MetaValueRegex: Regex  = "^([a-zA-Z]{2})\\s*(.+)*$".r
     final val ErrorRegex: Regex      = "^((?:CLIENT_ERROR|SERVER_ERROR|ERROR).*)$".r
     final val NumericRegex: Regex    = "^\\s*(\\d+)\\s*$".r
     final val KeyValueRegex: Regex   = "^(\\S+)=(\\S+)$".r
