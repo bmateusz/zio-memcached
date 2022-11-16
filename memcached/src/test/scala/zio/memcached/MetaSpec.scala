@@ -138,14 +138,14 @@ trait MetaSpec extends BaseSpec {
         test("add with client flags success") {
           for {
             key    <- uuid
-            _      <- metaSet(key, "value", MetaSetFlags.ModeAdd, MetaSetFlags.SetClientFlagsToken(1))
-            result <- metaGet[String](key, MetaGetFlags.ReturnClientFlagsToken)
+            _      <- metaSet(key, "value", MetaSetFlags.ModeAdd, MetaSetFlags.SetClientFlags(1))
+            result <- metaGet[String](key, MetaGetFlags.ReturnClientFlags)
           } yield assert(result)(equalTo(MetaGetResultHeadersOnly(Map('f' -> "1"))))
         },
         test("replace with client flags failure") {
           for {
             key    <- uuid
-            result <- metaSet(key, "value", MetaSetFlags.ModeReplace, MetaSetFlags.SetClientFlagsToken(1))
+            result <- metaSet(key, "value", MetaSetFlags.ModeReplace, MetaSetFlags.SetClientFlags(1))
           } yield assert(result)(equalTo(MetaSetResultNotStored(Map.empty)))
         },
         test("append") {
@@ -167,15 +167,15 @@ trait MetaSpec extends BaseSpec {
         test("compare and swap success") {
           for {
             key       <- uuid
-            setResult <- metaSet(key, "value", MetaSetFlags.ReturnItemCasToken)
+            setResult <- metaSet(key, "value", MetaSetFlags.ReturnItemCasUnique)
             result    <- metaSet(key, "value2", MetaSetFlags.CompareCasToken(CasUnique(setResult.headers('c').toLong)))
           } yield assert(result)(equalTo(MetaSetResultStored(Map.empty)))
         },
         test("compare and swap failure") {
           for {
             key       <- uuid
-            setResult <- metaSet(key, "value", MetaSetFlags.ReturnItemCasToken)
-            _         <- metaSet(key, "value2", MetaSetFlags.ReturnItemCasToken)
+            setResult <- metaSet(key, "value", MetaSetFlags.ReturnItemCasUnique)
+            _         <- metaSet(key, "value2", MetaSetFlags.ReturnItemCasUnique)
             result    <- metaSet(key, "value3", MetaSetFlags.CompareCasToken(CasUnique(setResult.headers('c').toLong)))
           } yield assert(result)(equalTo(MetaSetResultExists(Map.empty)))
         },
@@ -222,7 +222,7 @@ trait MetaSpec extends BaseSpec {
           for {
             key       <- uuid
             _         <- metaSet(key, "value")
-            getResult <- metaGet[String](key, MetaGetFlags.ReturnItemCasToken)
+            getResult <- metaGet[String](key, MetaGetFlags.ReturnItemCasUnique)
             _         <- metaSet(key, "value2")
             _ <- metaSet(
                    key,

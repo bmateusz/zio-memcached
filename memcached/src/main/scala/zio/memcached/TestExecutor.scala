@@ -281,11 +281,11 @@ private[memcached] final class TestExecutor(
             case TestExecutor.Invalid                  => Map('X' -> "", 'Z' -> "")
           }
           val metaHeader = flags.flags.foldLeft(validityHeaders) {
-            case (acc, MetaGetFlags.ReturnClientFlagsToken) =>
+            case (acc, MetaGetFlags.ReturnClientFlags) =>
               acc + ('f' -> info.flags.toString)
             case (acc, MetaGetFlags.ReturnItemTTL) =>
               acc + ('e' -> info.expireAt.map(_.getEpochSecond).getOrElse(-1L).toString)
-            case (acc, MetaGetFlags.ReturnItemCasToken) =>
+            case (acc, MetaGetFlags.ReturnItemCasUnique) =>
               acc + ('c' -> info.casUnique.toString)
             case (acc, MetaGetFlags.ReturnKeyAsToken) =>
               acc + ('k' -> key)
@@ -378,7 +378,7 @@ private[memcached] final class TestExecutor(
 
     def resultFlags(info: KeyInfo) =
       flags.flags.foldLeft(Map.empty[Char, String]) {
-        case (acc, MetaSetFlags.ReturnItemCasToken) =>
+        case (acc, MetaSetFlags.ReturnItemCasUnique) =>
           acc + ('c' -> info.casUnique.toString)
         case (acc, MetaSetFlags.ReturnKeyAsToken) =>
           acc + ('k' -> key)

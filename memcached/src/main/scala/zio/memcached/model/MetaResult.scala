@@ -2,11 +2,101 @@ package zio.memcached.model
 
 import zio.memcached.model.ValueHeaders.MetaValueHeader
 
+/**
+ * Meta result. See the "Meta Commands" section in memcached's protocol documentation
+ * [[https://raw.githubusercontent.com/memcached/memcached/master/doc/protocol.txt]] for more details.
+ */
 object MetaResult {
+
+  /**
+   * Meta get result base trait.
+   */
   sealed trait MetaGetResult[+A] {
+
+    /**
+     * Raw headers returned by memcached. The key is a single ascii character and the value is a string.
+     */
     def headers: MetaValueHeader
 
+    /**
+     * Returns the value decoded or None if it does not exist. The request must contain the
+     * [[zio.memcached.model.MetaGetFlags.ReturnItemValue]] flag to get this value.
+     */
     def getValue: Option[A]
+
+    /**
+     * Returns the compare and swap token. The request must contain the
+     * [[zio.memcached.model.MetaGetFlags.ReturnItemCasUnique]] flag to get this value.
+     */
+    def getCasUnique: Option[CasUnique] = headers.get('c').map(c => CasUnique.apply(c.toLong))
+
+    /**
+     * Returns the size of the value. The request must contain the [[zio.memcached.model.MetaGetFlags.ReturnItemSize]]
+     * flag to get this value.
+     */
+    def getSize: Option[Int] = headers.get('s').map(_.toInt)
+
+    /**
+     * Returns the client flags of the value. The request must contain the
+     * [[zio.memcached.model.MetaGetFlags.ReturnClientFlags]] flag to get this value.
+     */
+    def getClientFlags: Option[Int] = headers.get('f').map(_.toInt)
+
+    /**
+     * Returns the time since the item was last accessed. The request must contain the
+     * [[zio.memcached.model.MetaGetFlags.ReturnTimeSinceItemWasLastAccessed]] flag to get this value.
+     */
+    def getTimeSinceLastAccess: Option[Long] = headers.get('l').map(_.toLong)
+
+    /**
+     * Returns whether the item has been accessed before. The request must contain the
+     * [[zio.memcached.model.MetaGetFlags.ReturnWhetherItemHasBeenHitBefore]] flag to get this value.
+     */
+    def getItemHasBeenHitBefore: Option[Boolean] = headers.get('h').map(_ == "1")
+
+    /**
+     * Returns the time to live of the item in seconds, -1 for unlimited. The request must contain the
+     * [[zio.memcached.model.MetaGetFlags.ReturnItemTTL]] flag to get this value.
+     */
+    def getItemTTL: Option[Long] = headers.get('t').map(_.toLong)
+
+    /**
+     * Returns the key of the item. The request must contain the [[zio.memcached.model.MetaGetFlags.ReturnKeyAsToken]]
+     * flag to get this value.
+     */
+    def getKey: Option[String] = headers.get('k')
+
+    /**
+     * Returns whether the key is base64 encoded. The request must contain the
+     * [[zio.memcached.model.MetaGetFlags.InterpretKeyAsBase64]] flag to get this value.
+     */
+    def isKeyBoolean: Boolean = headers.contains('b')
+
+    /**
+     * Returns the opaque token. The request must contain the [[zio.memcached.model.MetaGetFlags.Opaque]] flag to get
+     * this value.
+     */
+    def getOpaque: Option[String] = headers.get('O')
+
+    /**
+     * Returns whether the item is stale, which means that the item has been marked as stale using meta delete and
+     * providing the [[zio.memcached.model.MetaDeleteFlags.Invalidate]] flag.
+     */
+    def getItemIsStale: Boolean = headers.contains('X')
+
+    /**
+     * Returns whether the item won the recache flag, which means the item has been marked as stale using meta delete
+     * and providing the [[zio.memcached.model.MetaDeleteFlags.Invalidate]] flag, and your request was the first since
+     * that.
+     */
+    def getClientWonTheRecacheFlag: Boolean = headers.contains('W')
+
+    /**
+     * Returns whether the item lost the recache flag, which means the item has been marked as stale using meta delete
+     * and providing the [[zio.memcached.model.MetaDeleteFlags.Invalidate]] flag, and your request was *NOT* the first
+     * since that.
+     */
+    def getClientLostTheRecacheFlag: Boolean = headers.contains('Z')
   }
 
   /**
