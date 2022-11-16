@@ -71,7 +71,7 @@ object MetaArithmeticFlags {
   /**
    * return current CAS value if successful
    */
-  case object ReturnItemCasToken extends MetaArithmeticFlag {
+  case object ReturnItemCasUnique extends MetaArithmeticFlag {
     override def flag: String = "c"
   }
 
@@ -151,7 +151,7 @@ object MetaArithmeticFlags {
         .map {
           case "b" => InterpretKeyAsBase64
           case "t" => ReturnItemTTL
-          case "c" => ReturnItemCasToken
+          case "c" => ReturnItemCasUnique
           case "k" => ReturnKeyAsToken
           case "v" => ReturnItemValue
           case FlagWithValueRegex(flag, value) =>

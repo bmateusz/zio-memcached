@@ -26,14 +26,14 @@ object MetaGetFlags {
   /**
    * return item cas token
    */
-  case object ReturnItemCasToken extends MetaGetFlag {
+  case object ReturnItemCasUnique extends MetaGetFlag {
     override def flag: String = "c"
   }
 
   /**
    * return client flags token
    */
-  case object ReturnClientFlagsToken extends MetaGetFlag {
+  case object ReturnClientFlags extends MetaGetFlag {
     override def flag: String = "f"
   }
 
@@ -82,7 +82,7 @@ object MetaGetFlags {
   /**
    * return item size token
    */
-  case object ReturnItemSizeToken extends MetaGetFlag {
+  case object ReturnItemSize extends MetaGetFlag {
     override def flag: String = "s"
   }
 
@@ -173,12 +173,12 @@ object MetaGetFlags {
           case flag =>
             flag match {
               case "b" => InterpretKeyAsBase64
-              case "c" => ReturnItemCasToken
-              case "f" => ReturnClientFlagsToken
+              case "c" => ReturnItemCasUnique
+              case "f" => ReturnClientFlags
               case "h" => ReturnWhetherItemHasBeenHitBefore
               case "k" => ReturnKeyAsToken
               case "l" => ReturnTimeSinceItemWasLastAccessed
-              case "s" => ReturnItemSizeToken
+              case "s" => ReturnItemSize
               case "t" => ReturnItemTTL
               case "u" => DontBumpInLRU
               case "v" => ReturnItemValue

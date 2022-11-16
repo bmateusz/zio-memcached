@@ -26,7 +26,7 @@ object MetaSetFlags {
   /**
    * return CAS value if successfully stored
    */
-  case object ReturnItemCasToken extends MetaSetFlag {
+  case object ReturnItemCasUnique extends MetaSetFlag {
     override def flag: String = "c"
   }
 
@@ -40,7 +40,7 @@ object MetaSetFlags {
   /**
    * set client flags to token (32 bit unsigned numeric)
    */
-  case class SetClientFlagsToken(value: Int) extends MetaSetFlag {
+  case class SetClientFlags(value: Int) extends MetaSetFlag {
     override def flag: String = s"F$value"
   }
 
@@ -152,14 +152,14 @@ object MetaSetFlags {
           case FlagWithValueRegex(flag, value) =>
             flag match {
               case "C" => CompareCasToken(CasUnique(value.toLong))
-              case "F" => SetClientFlagsToken(value.toInt)
+              case "F" => SetClientFlags(value.toInt)
               case "O" => Opaque(value)
               case "T" => UpdateRemainingTTL(value.toLong)
             }
           case flag =>
             flag match {
               case "b"  => InterpretKeyAsBase64
-              case "c"  => ReturnItemCasToken
+              case "c"  => ReturnItemCasUnique
               case "I"  => InvalidateIfCasIsOlder
               case "k"  => ReturnKeyAsToken
               case "ME" => ModeAdd
@@ -179,7 +179,7 @@ class MetaSetFlags(override val flags: Seq[MetaSetFlag]) extends MetaFlagsBase[M
 
   def casUnique: Option[CasUnique] = flags.collectFirst { case CompareCasToken(cas) => cas }
 
-  def clientFlags: Option[Int] = flags.collectFirst { case SetClientFlagsToken(value) => value }
+  def clientFlags: Option[Int] = flags.collectFirst { case SetClientFlags(value) => value }
 
   def expiration: Option[Long] = flags.collectFirst { case UpdateRemainingTTL(seconds) => seconds }
 

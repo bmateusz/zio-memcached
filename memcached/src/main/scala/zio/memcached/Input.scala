@@ -32,7 +32,7 @@ object Input {
   private[this] def encodeBytes[A](value: A)(implicit codec: Codec, schema: Schema[A]): Chunk[Byte] =
     codec.encode(schema)(value)
 
-  val ThirtyDaysInSeconds: Long = 60 * 60 * 24 * 30
+  val ThirtyDaysInSeconds: Long = 60 * 60 * 24 * 30L
 
   private[this] def durationToSeconds(duration: Duration): Long =
     duration match {
