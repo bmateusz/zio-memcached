@@ -2,7 +2,7 @@ package zio.memcached
 
 import zio._
 import zio.memcached.model.MetaResult._
-import zio.memcached.model.{CasUnique, MetaArithmeticFlags, MetaDeleteFlags, MetaGetFlags, MetaSetFlags}
+import zio.memcached.model.{MetaArithmeticFlags, MetaDeleteFlags, MetaGetFlags, MetaSetFlags}
 import zio.schema.DeriveSchema.gen
 import zio.test.Assertion.{exists => _, _}
 import zio.test._
@@ -140,7 +140,8 @@ trait MetaSpec extends BaseSpec {
             key    <- uuid
             _      <- metaSet(key, "value", MetaSetFlags.ModeAdd, MetaSetFlags.SetClientFlags(1))
             result <- metaGet[String](key, MetaGetFlags.ReturnClientFlags)
-          } yield assert(result)(equalTo(MetaGetResultHeadersOnly(Map('f' -> "1"))))
+          } yield assert(result)(equalTo(MetaGetResultHeadersOnly(Map('f' -> "1")))) &&
+            assert(result.getClientFlags)(isSome(equalTo(1)))
         },
         test("replace with client flags failure") {
           for {
@@ -168,7 +169,8 @@ trait MetaSpec extends BaseSpec {
           for {
             key       <- uuid
             setResult <- metaSet(key, "value", MetaSetFlags.ReturnItemCasUnique)
-            result    <- metaSet(key, "value2", MetaSetFlags.CompareCasToken(CasUnique(setResult.headers('c').toLong)))
+            casUnique  = setResult.getCasUnique.get
+            result    <- metaSet(key, "value2", MetaSetFlags.CompareCasToken(casUnique))
           } yield assert(result)(equalTo(MetaSetResultStored(Map.empty)))
         },
         test("compare and swap failure") {
@@ -176,7 +178,8 @@ trait MetaSpec extends BaseSpec {
             key       <- uuid
             setResult <- metaSet(key, "value", MetaSetFlags.ReturnItemCasUnique)
             _         <- metaSet(key, "value2", MetaSetFlags.ReturnItemCasUnique)
-            result    <- metaSet(key, "value3", MetaSetFlags.CompareCasToken(CasUnique(setResult.headers('c').toLong)))
+            casUnique  = setResult.getCasUnique.get
+            result    <- metaSet(key, "value3", MetaSetFlags.CompareCasToken(casUnique))
           } yield assert(result)(equalTo(MetaSetResultExists(Map.empty)))
         },
         test("get and touch") {
@@ -215,7 +218,9 @@ trait MetaSpec extends BaseSpec {
             _      <- metaSet(key, "value2")
             third  <- metaGet[String](key, MetaGetFlags.ReturnItemValue)
           } yield assert(first)(equalTo(MetaGetResultValue("value", Map('X' -> "", 'W' -> "")))) &&
+            assert(first.getItemIsStale)(isTrue) && assert(first.getClientWonTheRecacheFlag)(isTrue) &&
             assert(second)(equalTo(MetaGetResultValue("value", Map('X' -> "", 'Z' -> "")))) &&
+            assert(second.getItemIsStale)(isTrue) && assert(second.getClientLostTheRecacheFlag)(isTrue) &&
             assert(third)(equalTo(MetaGetResultValue("value2", Map.empty)))
         },
         test("invalidate if cas is older") {
@@ -223,15 +228,17 @@ trait MetaSpec extends BaseSpec {
             key       <- uuid
             _         <- metaSet(key, "value")
             getResult <- metaGet[String](key, MetaGetFlags.ReturnItemCasUnique)
+            casUnique  = getResult.getCasUnique.get
             _         <- metaSet(key, "value2")
             _ <- metaSet(
                    key,
                    "value3",
-                   MetaSetFlags.CompareCasToken(CasUnique(getResult.headers('c').toLong)),
+                   MetaSetFlags.CompareCasToken(casUnique),
                    MetaSetFlags.InvalidateIfCasIsOlder
                  )
             result <- metaGet[String](key, MetaGetFlags.ReturnItemValue)
-          } yield assert(result)(equalTo(MetaGetResultValue("value3", Map('X' -> "", 'W' -> ""))))
+          } yield assert(result)(equalTo(MetaGetResultValue("value3", Map('X' -> "", 'W' -> "")))) &&
+            assert(result.getItemIsStale)(isTrue) && assert(result.getClientWonTheRecacheFlag)(isTrue)
         },
         test("base64 key") {
           for {
@@ -247,6 +254,7 @@ trait MetaSpec extends BaseSpec {
             delResult <- metaDelete(base64, MetaDeleteFlags.InterpretKeyAsBase64)
           } yield assert(setResult)(equalTo(MetaSetResultStored(Map.empty))) &&
             assert(getResult)(equalTo(MetaGetResultValue("value", Map('k' -> base64, 'b' -> "")))) &&
+            assert(getResult.getKey)(isSome(equalTo(base64))) && assert(getResult.isKeyBase64Encoded)(isTrue) &&
             assert(delResult)(equalTo(MetaDeleteResultDeleted(Map.empty)))
         }
       ),
