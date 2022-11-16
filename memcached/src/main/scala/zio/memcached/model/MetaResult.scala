@@ -70,7 +70,7 @@ object MetaResult {
      * Returns whether the key is base64 encoded. The request must contain the
      * [[zio.memcached.model.MetaGetFlags.InterpretKeyAsBase64]] flag to get this value.
      */
-    def isKeyBoolean: Boolean = headers.contains('b')
+    def isKeyBase64Encoded: Boolean = headers.contains('b')
 
     /**
      * Returns the opaque token. The request must contain the [[zio.memcached.model.MetaGetFlags.Opaque]] flag to get
@@ -138,8 +138,35 @@ object MetaResult {
     override def getValue: Option[A] = None
   }
 
+  /**
+   * Meta set result base trait.
+   */
   sealed trait MetaSetResult {
     def headers: MetaValueHeader
+
+    /**
+     * Returns the compare and swap token. The request must contain the
+     * [[zio.memcached.model.MetaSetFlags.ReturnItemCasUnique]] flag to get this value.
+     */
+    def getCasUnique: Option[CasUnique] = headers.get('c').map(c => CasUnique.apply(c.toLong))
+
+    /**
+     * Returns the key of the item. The request must contain the [[zio.memcached.model.MetaSetFlags.ReturnKeyAsToken]]
+     * flag to get this value.
+     */
+    def getKey: Option[String] = headers.get('k')
+
+    /**
+     * Returns whether the key is base64 encoded. The request must contain the
+     * [[zio.memcached.model.MetaSetFlags.InterpretKeyAsBase64]] flag to get this value.
+     */
+    def isKeyBase64Encoded: Boolean = headers.contains('b')
+
+    /**
+     * Returns the opaque token. The request must contain the [[zio.memcached.model.MetaSetFlags.Opaque]] flag to get
+     * this value.
+     */
+    def getOpaque: Option[String] = headers.get('O')
   }
 
   case class MetaSetResultStored(headers: MetaValueHeader) extends MetaSetResult
@@ -150,8 +177,29 @@ object MetaResult {
 
   case class MetaSetResultNotFound(headers: MetaValueHeader) extends MetaSetResult
 
+  /**
+   * Meta delete result base trait.
+   */
   sealed trait MetaDeleteResult {
     def headers: MetaValueHeader
+
+    /**
+     * Returns the key of the item. The request must contain the
+     * [[zio.memcached.model.MetaDeleteFlags.ReturnKeyAsToken]] flag to get this value.
+     */
+    def getKey: Option[String] = headers.get('k')
+
+    /**
+     * Returns whether the key is base64 encoded. The request must contain the
+     * [[zio.memcached.model.MetaDeleteFlags.InterpretKeyAsBase64]] flag to get this value.
+     */
+    def isKeyBase64Encoded: Boolean = headers.contains('b')
+
+    /**
+     * Returns the opaque token. The request must contain the [[zio.memcached.model.MetaDeleteFlags.Opaque]] flag to get
+     * this value.
+     */
+    def getOpaque: Option[String] = headers.get('O')
   }
 
   case class MetaDeleteResultDeleted(headers: MetaValueHeader) extends MetaDeleteResult
@@ -160,25 +208,74 @@ object MetaResult {
 
   case class MetaDeleteResultExists(headers: MetaValueHeader) extends MetaDeleteResult
 
+  /**
+   * Meta arithmetic result base trait.
+   */
   sealed trait MetaArithmeticResult {
     def headers: MetaValueHeader
 
-    val value: Option[Long]
+    /**
+     * Returns the value of the item. The request must contain the
+     * [[zio.memcached.model.MetaArithmeticFlags.ReturnItemValue]] flag to get this value.
+     */
+    def getValue: Option[Long]
+
+    /**
+     * Returns the time to live of the item in seconds, -1 for unlimited. The request must contain the
+     * [[zio.memcached.model.MetaArithmeticFlags.ReturnItemTTL]] flag to get this value.
+     */
+    def getItemTTL: Option[Long] = headers.get('t').map(_.toLong)
+
+    /**
+     * Returns the compare and swap token. The request must contain the
+     * [[zio.memcached.model.MetaArithmeticFlags.ReturnItemCasUnique]] flag to get this value.
+     */
+    def getCasUnique: Option[CasUnique] = headers.get('c').map(c => CasUnique.apply(c.toLong))
+
+    /**
+     * Returns the key of the item. The request must contain the
+     * [[zio.memcached.model.MetaArithmeticFlags.ReturnKeyAsToken]] flag to get this value.
+     */
+    def getKey: Option[String] = headers.get('k')
+
+    /**
+     * Returns whether the key is base64 encoded. The request must contain the
+     * [[zio.memcached.model.MetaArithmeticFlags.InterpretKeyAsBase64]] flag to get this value.
+     */
+    def isKeyBase64Encoded: Boolean = headers.contains('b')
+
+    /**
+     * Returns the opaque token. The request must contain the [[zio.memcached.model.MetaArithmeticFlags.Opaque]] flag to
+     * get this value.
+     */
+    def getOpaque: Option[String] = headers.get('O')
   }
 
-  case class MetaArithmeticResultSuccess(headers: MetaValueHeader, value: Option[Long]) extends MetaArithmeticResult
+  case class MetaArithmeticResultSuccess(headers: MetaValueHeader, value: Option[Long]) extends MetaArithmeticResult {
+    override val getValue: Option[Long] = value
+  }
 
-  case class MetaArithmeticResultExists(headers: MetaValueHeader, value: Option[Long]) extends MetaArithmeticResult
+  case class MetaArithmeticResultExists(headers: MetaValueHeader, value: Option[Long]) extends MetaArithmeticResult {
+    override val getValue: Option[Long] = value
+  }
 
   case class MetaArithmeticResultNotFound(headers: MetaValueHeader) extends MetaArithmeticResult {
-    override val value: Option[Long] = None
+    override val getValue: Option[Long] = None
   }
 
   case class MetaArithmeticResultNotStored(headers: MetaValueHeader) extends MetaArithmeticResult {
-    override val value: Option[Long] = None
+    override val getValue: Option[Long] = None
   }
 
+  /**
+   * Meta debug result base trait.
+   */
   sealed trait MetaDebugResult {
+
+    /**
+     * Result of the debug command. Unlike other meta commands, the keys in the result are not single ascii characters,
+     * but a string.
+     */
     def headers: Map[String, String]
   }
 
