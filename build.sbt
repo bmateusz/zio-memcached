@@ -6,7 +6,7 @@ inThisBuild(
   List(
     developers := List(
       Developer("jdegoes", "John De Goes", "john@degoes.net", url("https://degoes.net")),
-      Developer("mijicd", "Dejan Mijic", "dmijic@acm.org", url("https://github.com/mijicd"))
+      Developer("bmateusz", "Mate Borcsok", "bmateusz@gmail.com", url("https://github.com/bmateusz"))
     ),
     homepage         := Some(url("https://github.com/zio/zio-memcached/")),
     licenses         := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
@@ -29,8 +29,7 @@ lazy val root =
   project
     .in(file("."))
     .settings(publish / skip := true)
-    // .aggregate(memcached, benchmarks, example)
-    .aggregate(memcached, example)
+    .aggregate(memcached, benchmarks, example)
 
 lazy val memcached =
   project
@@ -61,9 +60,8 @@ lazy val benchmarks =
     .settings(
       publish / skip := true,
       libraryDependencies ++= List(
-        "net.spy"   % "spymemcached"        % "2.12.3",
-        "dev.zio"  %% "zio-schema-protobuf" % "0.2.1",
-        "org.slf4j" % "slf4j-simple"        % "2.0.3"
+        "net.spy"  % "spymemcached"        % "2.12.3",
+        "dev.zio" %% "zio-schema-protobuf" % "0.2.1"
       )
     )
 
@@ -75,13 +73,12 @@ lazy val example =
     .settings(
       publish / skip := true,
       libraryDependencies ++= List(
-        "dev.zio"  %% "zio-streams"         % "2.0.3",
-        "dev.zio"  %% "zio-config-magnolia" % "3.0.2",
-        "dev.zio"  %% "zio-config-typesafe" % "3.0.2",
-        "dev.zio"  %% "zio-schema-protobuf" % "0.2.1",
-        "dev.zio"  %% "zio-json"            % "0.3.0-RC11",
-        "io.d11"   %% "zhttp"               % "2.0.0-RC11",
-        "org.slf4j" % "slf4j-simple"        % "2.0.3"
+        "dev.zio" %% "zio-streams"         % "2.0.3",
+        "dev.zio" %% "zio-config-magnolia" % "3.0.2",
+        "dev.zio" %% "zio-config-typesafe" % "3.0.2",
+        "dev.zio" %% "zio-schema-protobuf" % "0.2.1",
+        "dev.zio" %% "zio-json"            % "0.3.0-RC11",
+        "io.d11"  %% "zhttp"               % "2.0.0-RC11"
       )
     )
 

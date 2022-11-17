@@ -27,11 +27,10 @@ trait BenchmarkRuntime {
 
   import zio.memcached.benchmarks.BenchmarkRuntime._
 
-  final lazy val runtime: Runtime[Memcached] = {
+  final lazy val runtime: Runtime[Memcached] =
     Unsafe.unsafe { implicit unsafe =>
       zio.Runtime.unsafe.fromLayer(Layer)
     }
-  }
 
   final def execute(query: ZIO[Memcached, MemcachedError, Unit]): Unit =
     Unsafe.unsafe { implicit unsafe =>
@@ -53,7 +52,7 @@ object BenchmarkRuntime {
       MemcachedLive.layer
     )
 
-  final val MemcachedHost = "127.0.0.1"
+  final val MemcachedHost  = "127.0.0.1"
   final val MemcachedPort1 = 11211
   final val MemcachedPort2 = 11212
 }
