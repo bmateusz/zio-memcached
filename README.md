@@ -8,6 +8,8 @@ ZIO Memcached is a type-safe, performant, ZIO native Memcached client.
 
 > The client is still a work-in-progress. Watch this space!
 
+[ZIO Redis](https://github.com/zio/zio-redis/) by Dejan Mijic inspired this project. Instead of starting from scratch, I forked ZIO Redis and transformed it into a Memcached client.
+
 # Documentation
 
 Learn more on the [ZIO Memcached Microsite](https://zio.github.io/zio-memcached/)!
