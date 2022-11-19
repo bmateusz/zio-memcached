@@ -17,8 +17,9 @@
 package example.api
 
 import example._
-import zhttp.http._
 import zio._
+import zio.http._
+import zio.http.model.{Method, Status}
 import zio.json._
 import zio.memcached.Memcached
 import zio.stream.ZStream
