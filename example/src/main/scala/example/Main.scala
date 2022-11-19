@@ -25,7 +25,7 @@ import zio.schema.codec.{Codec, ProtobufCodec}
 object Main extends ZIOAppDefault {
   def run: ZIO[ZIOAppArgs with Scope, Any, ExitCode] =
     Server
-      .serve(Api.routes)
+      .serve(Api.routes, Some(errorCallback))
       .provide(
         ServerConfig.live(ServerConfig.default.port(9000)),
         Server.live,
@@ -35,9 +35,8 @@ object Main extends ZIOAppDefault {
         MemcachedLive.layer,
         ZLayer.succeed[Codec](ProtobufCodec)
       )
-      .tapBoth(
-        err => ZIO.logError(s"Server failed with $err"),
-        _ => ZIO.never
-      )
       .exitCode
+
+  private val errorCallback =
+    (err: Throwable) => ZIO.logError(s"Server failed with $err")
 }
