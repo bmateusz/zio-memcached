@@ -150,6 +150,8 @@ object RespValue {
             if (rem == 0) {
               if (chars == EndChunk) {
                 Done(BulkStringWithHeader(header, chunk.result()))
+              } else if (chars.isEmpty) {
+                CollectingValue(rem, chunk, header)
               } else {
                 Failed
               }
