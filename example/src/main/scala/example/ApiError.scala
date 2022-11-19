@@ -16,7 +16,8 @@
 
 package example
 
-import zhttp.http._
+import zio.http._
+import zio.http.model.{HttpError, Status}
 import zio.memcached
 
 import scala.util.control.NoStackTrace

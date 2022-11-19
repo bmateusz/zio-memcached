@@ -17,16 +17,18 @@
 package example
 
 import example.api.Api
-import zhttp.service.Server
 import zio._
+import zio.http.{Server, ServerConfig}
 import zio.memcached.{MemcachedConfig, MemcachedExecutor, MemcachedLive}
 import zio.schema.codec.{Codec, ProtobufCodec}
 
 object Main extends ZIOAppDefault {
   def run: ZIO[ZIOAppArgs with Scope, Any, ExitCode] =
     Server
-      .start(9000, Api.routes)
+      .serve(Api.routes)
       .provide(
+        ServerConfig.live(ServerConfig.default.port(9000)),
+        Server.live,
         ZLayer.succeed(MemcachedConfig.Default),
         MemcachedApiLive.layer,
         MemcachedExecutor.layer,

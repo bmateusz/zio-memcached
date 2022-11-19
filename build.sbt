@@ -40,12 +40,12 @@ lazy val memcached =
     .settings(stdSettings("zio-memcached"))
     .settings(
       libraryDependencies ++= List(
-        "dev.zio"                %% "zio-streams"             % "2.0.3",
+        "dev.zio"                %% "zio-streams"             % "2.0.4",
         "dev.zio"                %% "zio-logging"             % "2.1.4",
         "dev.zio"                %% "zio-schema"              % "0.2.1",
         "dev.zio"                %% "zio-schema-protobuf"     % "0.2.1" % Test,
-        "dev.zio"                %% "zio-test"                % "2.0.3" % Test,
-        "dev.zio"                %% "zio-test-sbt"            % "2.0.3" % Test,
+        "dev.zio"                %% "zio-test"                % "2.0.4" % Test,
+        "dev.zio"                %% "zio-test-sbt"            % "2.0.4" % Test,
         "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.1"
       ),
       testFrameworks := List(new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -73,10 +73,10 @@ lazy val example =
     .settings(
       publish / skip := true,
       libraryDependencies ++= List(
-        "dev.zio" %% "zio-streams"         % "2.0.3",
+        "dev.zio" %% "zio-streams"         % "2.0.4",
         "dev.zio" %% "zio-schema-protobuf" % "0.2.1",
         "dev.zio" %% "zio-json"            % "0.3.0-RC11",
-        "io.d11"  %% "zhttp"               % "2.0.0-RC11"
+        "dev.zio" %% "zio-http"            % "0.0.3"
       )
     )
 
