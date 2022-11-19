@@ -17,10 +17,9 @@
 package example
 
 import example.api.Api
-import example.config.AppConfig
 import zhttp.service.Server
 import zio._
-import zio.memcached.{MemcachedExecutor, MemcachedLive}
+import zio.memcached.{MemcachedConfig, MemcachedExecutor, MemcachedLive}
 import zio.schema.codec.{Codec, ProtobufCodec}
 
 object Main extends ZIOAppDefault {
@@ -28,7 +27,7 @@ object Main extends ZIOAppDefault {
     Server
       .start(9000, Api.routes)
       .provide(
-        AppConfig.layer,
+        ZLayer.succeed(MemcachedConfig.Default),
         MemcachedApiLive.layer,
         MemcachedExecutor.layer,
         MemcachedLive.layer,

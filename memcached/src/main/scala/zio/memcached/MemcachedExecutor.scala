@@ -23,7 +23,7 @@ import zio.stm.TRef
 import java.net.InetSocketAddress
 
 trait MemcachedExecutor {
-  def execute(hash: Int, command: Input): IO[MemcachedError, RespValue]
+  def execute(key: String, command: Input): IO[MemcachedError, RespValue]
 }
 
 object MemcachedExecutor {
@@ -33,12 +33,12 @@ object MemcachedExecutor {
         config <- ZIO.service[MemcachedConfig]
         node <- Chunk.fromIterable(config.nodes).mapZIOPar { configNode =>
                   for {
-                    byteStream <- NodeDefinition(configNode)
+                    byteStream <- NodeDefinition(configNode, config)
                     _          <- ZIO.logInfo(s"Registered node ${configNode.host}:${configNode.port}")
                   } yield byteStream
                 }
         _ <- ZIO.logInfo(s"Registered ${config.nodes.size} nodes")
-      } yield new Live(node)
+      } yield new Live(node, config)
     }
 
   lazy val local: ZLayer[Any, MemcachedError.IOError, MemcachedExecutor] =
@@ -54,36 +54,45 @@ object MemcachedExecutor {
 
   private[this] final val RequestQueueSize = 16
 
-  private[this] final class Live(nodes: Chunk[NodeDefinition]) extends MemcachedExecutor {
+  private[this] final class Live(nodes: Chunk[NodeDefinition], config: MemcachedConfig) extends MemcachedExecutor {
     private val length = nodes.length
 
-    def execute(hash: Int, command: Input): IO[MemcachedError, RespValue] =
+    def execute(key: String, command: Input): IO[MemcachedError, RespValue] =
       Promise
         .make[MemcachedError, RespValue]
         .flatMap { promise =>
-          (nodes(Math.abs(hash % length)).offer(Request(command, promise)) *> promise.await)
+          (nodes(Math.abs(config.hashAlgorithm(key) % length)).offer(Request(command, promise)) *> promise.await)
             .onInterrupt(promise.fail(MemcachedError.Interrupted))
         }
   }
 
   private[this] object NodeDefinition {
-    private def streamedExecutor(address: InetSocketAddress): ZIO[Scope, MemcachedError.IOError, Node] =
+    private def streamedExecutor(
+      address: InetSocketAddress,
+      config: MemcachedConfig
+    ): ZIO[Scope, MemcachedError.IOError, Node] =
       for {
         byteStream <- ByteStream.connect(address)
-        reqQueue   <- Queue.bounded[Request](RequestQueueSize)
+        reqQueue   <- Queue.bounded[Request](config.messageQueueSize)
         resQueue   <- Queue.unbounded[Promise[MemcachedError, RespValue]]
         live        = new Node(reqQueue, resQueue, byteStream)
       } yield live
 
-    private def optionStreamExecutor(address: InetSocketAddress): ZIO[Scope, MemcachedError.IOError, Option[Node]] =
-      streamedExecutor(address).mapBoth(_ => Option.empty[Node], s => Option(s)).merge
+    private def optionStreamExecutor(
+      address: InetSocketAddress,
+      config: MemcachedConfig
+    ): ZIO[Scope, MemcachedError.IOError, Option[Node]] =
+      streamedExecutor(address, config).mapBoth(_ => Option.empty[Node], s => Option(s)).merge
 
-    def apply(nodeConfig: MemcachedConfig.MemcachedNode): ZIO[Scope, MemcachedError.IOError, NodeDefinition] = {
+    def apply(
+      nodeConfig: MemcachedConfig.MemcachedNode,
+      config: MemcachedConfig
+    ): ZIO[Scope, MemcachedError.IOError, NodeDefinition] = {
       val address = new InetSocketAddress(nodeConfig.host, nodeConfig.port)
       for {
-        initializedNode <- optionStreamExecutor(address)
+        initializedNode <- optionStreamExecutor(address, config)
         node            <- TRef.make(initializedNode).commit
-        result           = new NodeDefinition(address, node)
+        result           = new NodeDefinition(address, node, config)
         _ <- initializedNode match {
                case Some(runningNode) =>
                  result.run(runningNode).forkScoped
@@ -94,7 +103,11 @@ object MemcachedExecutor {
     }
   }
 
-  private[this] final class NodeDefinition(address: InetSocketAddress, node: TRef[Option[Node]]) {
+  private[this] final class NodeDefinition(
+    address: InetSocketAddress,
+    node: TRef[Option[Node]],
+    config: MemcachedConfig
+  ) {
     private val retrySchedule =
       Schedule.spaced(1.second).zip[Any, Any, Long](Schedule.recurs(30))
 
@@ -102,7 +115,7 @@ object MemcachedExecutor {
       (for {
         optOldExecutor <- node.getAndSet(Option.empty[Node]).commit
         _              <- ZIO.fromOption(optOldExecutor).map(_.shutdown).orElse(ZIO.unit).fork
-        result         <- NodeDefinition.streamedExecutor(address).retry(retrySchedule)
+        result         <- NodeDefinition.streamedExecutor(address, config).retry(retrySchedule)
         _              <- node.set(Some(result)).commit &> result.run.ignore
       } yield result).forever
         .orElseFail(MemcachedError.Unavailable(s"Node $address is not available"))
