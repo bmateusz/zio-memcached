@@ -43,9 +43,8 @@ class GetBenchmarks extends BenchmarkRuntime {
   }
 
   @Benchmark
-  def spyMemcached(): Unit = {
-    execute(ZIO.foreachDiscard(items)(i => ZIO.succeedNow(SpyMemcached.get(i))))
-  }
+  def spyMemcached(): Unit =
+    execute(ZIO.foreachDiscard(items)(i => ZIO.attempt(SpyMemcached.get(i)).ignore))
 
   @Benchmark
   def zio(): Unit = execute(ZIO.foreachDiscard(items)(get[String](_)))
