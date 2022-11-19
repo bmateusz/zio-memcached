@@ -29,6 +29,7 @@ object MemcachedError {
     override def toString: String = s"CodecError: $message"
   }
   final case class NotConnected(message: String)    extends MemcachedError
+  final case class Unavailable(message: String)     extends MemcachedError
   final case class IOError(exception: IOException)  extends MemcachedError
   final case class WriteError(exception: Throwable) extends MemcachedError
   case object InvalidKey                            extends MemcachedError

@@ -34,7 +34,6 @@ object MemcachedExecutor {
         node <- Chunk.fromIterable(config.nodes).mapZIOPar { configNode =>
                   for {
                     byteStream <- NodeDefinition(configNode)
-                    _          <- byteStream.run.forkScoped
                     _          <- ZIO.logInfo(s"Registered node ${configNode.host}:${configNode.port}")
                   } yield byteStream
                 }
@@ -68,7 +67,7 @@ object MemcachedExecutor {
   }
 
   private[this] object NodeDefinition {
-    private def singleStreamedExecutor(address: InetSocketAddress): ZIO[Scope, MemcachedError.IOError, Node] =
+    private def streamedExecutor(address: InetSocketAddress): ZIO[Scope, MemcachedError.IOError, Node] =
       for {
         byteStream <- ByteStream.connect(address)
         reqQueue   <- Queue.bounded[Request](RequestQueueSize)
@@ -76,36 +75,42 @@ object MemcachedExecutor {
         live        = new Node(reqQueue, resQueue, byteStream)
       } yield live
 
+    private def optionStreamExecutor(address: InetSocketAddress): ZIO[Scope, MemcachedError.IOError, Option[Node]] =
+      streamedExecutor(address).mapBoth(_ => Option.empty[Node], s => Option(s)).merge
+
     def apply(nodeConfig: MemcachedConfig.MemcachedNode): ZIO[Scope, MemcachedError.IOError, NodeDefinition] = {
       val address = new InetSocketAddress(nodeConfig.host, nodeConfig.port)
       for {
-        initializedNode <- singleStreamedExecutor(address).mapBoth(_ => Option.empty[Node], s => Option(s)).merge
+        initializedNode <- optionStreamExecutor(address)
         node            <- TRef.make(initializedNode).commit
-      } yield new NodeDefinition(address, node)
+        result           = new NodeDefinition(address, node)
+        _ <- initializedNode match {
+               case Some(runningNode) =>
+                 result.run(runningNode).forkScoped
+               case None =>
+                 result.retryLoop.forkScoped
+             }
+      } yield result
     }
   }
 
   private[this] final class NodeDefinition(address: InetSocketAddress, node: TRef[Option[Node]]) {
-    private val runUntilFailure =
-      for {
-        optLive <- node.get.commit
-        live <- optLive match {
-                  case Some(value) =>
-                    ZIO.succeed(value)
-                  case None =>
-                    for {
-                      live <- NodeDefinition.singleStreamedExecutor(address)
-                      _    <- node.set(Some(live)).commit
-                    } yield live
-                }
-        running <- live.run.ignore
-        _       <- node.set(Option.empty[Node]).commit
-      } yield running
+    private val retrySchedule =
+      Schedule.spaced(1.second).zip[Any, Any, Long](Schedule.recurs(30))
 
-    val run: ZIO[Scope, MemcachedError, Nothing] =
-      runUntilFailure
-        .retry(Schedule.spaced(5.second).jittered)
-        .forever
+    private val retryLoop =
+      (for {
+        optOldExecutor <- node.getAndSet(Option.empty[Node]).commit
+        _              <- ZIO.fromOption(optOldExecutor).map(_.shutdown).orElse(ZIO.unit).fork
+        result         <- NodeDefinition.streamedExecutor(address).retry(retrySchedule)
+        _              <- node.set(Some(result)).commit &> result.run.ignore
+      } yield result).forever
+        .orElseFail(MemcachedError.Unavailable(s"Node $address is not available"))
+        .tapError(e => ZIO.logError(e.message))
+
+    def run(runningNode: Node): ZIO[Scope, MemcachedError, Unit] =
+      runningNode.run
+        .orElse(retryLoop)
 
     def offer(request: Request): IO[MemcachedError.NotConnected, Boolean] =
       node.get.commit.flatMap {
@@ -121,6 +126,14 @@ object MemcachedExecutor {
   ) {
     def offer(request: Request): UIO[Boolean] =
       reqQueue.offer(request)
+
+    def shutdown: UIO[Unit] =
+      reqQueue.takeAll.flatMap { reqs =>
+        ZIO.foreachDiscard(reqs) { req =>
+          req.promise.fail(MemcachedError.NotConnected("Node is shutting down"))
+        }
+      }
+        .zipParRight(reqQueue.shutdown)
 
     private def drainWith(e: MemcachedError): UIO[Unit] = resQueue.takeAll.flatMap(ZIO.foreachDiscard(_)(_.fail(e)))
 
