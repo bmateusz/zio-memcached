@@ -16,14 +16,29 @@
 
 package zio.memcached
 
-import zio.memcached.MemcachedConfig.MemcachedNode
+import zio.Schedule.WithState
+import zio.memcached.MemcachedConfig._
+import zio.{Schedule, durationInt}
 
-final case class MemcachedConfig(nodes: List[MemcachedNode])
+final case class MemcachedConfig(
+  nodes: List[MemcachedNode],
+  retrySchedule: Schedule[Any, Any, Any] = DefaultRetrySchedule,
+  hashAlgorithm: String => Int = DefaultHashAlgorithm,
+  messageQueueSize: Int = DefaultMessageQueueSize
+)
 
 object MemcachedConfig {
+
+  final case class MemcachedNode(host: String, port: Int)
+
   lazy val Default: MemcachedConfig = MemcachedConfig(
     MemcachedNode("0.0.0.0", 11211) :: MemcachedNode("0.0.0.0", 11212) :: Nil
   )
 
-  final case class MemcachedNode(host: String, port: Int)
+  lazy val DefaultRetrySchedule: WithState[Long, Any, Any, Long] = Schedule.spaced(5.second)
+
+  lazy val DefaultHashAlgorithm: String => Int = (key: String) => key.hashCode
+
+  lazy val DefaultMessageQueueSize: Int = 16
+
 }

@@ -38,7 +38,7 @@ private[memcached] final class TestExecutor(
   def valueChunk(value: Input): Chunk[Byte] =
     value.dropWhile(_ != '\r').drop(2).dropRight(2)
 
-  override def execute(hash: Int, input: Input): IO[MemcachedError, RespValue] = {
+  override def execute(key: String, input: Input): IO[MemcachedError, RespValue] = {
     val line = commandAsString(input)
     val args = line.split(' ')
 

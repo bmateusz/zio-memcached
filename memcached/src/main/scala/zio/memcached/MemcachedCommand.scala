@@ -28,7 +28,7 @@ object MemcachedCommand {
       .serviceWithZIO[Memcached] { memcached =>
         if (isValidKey(key)) {
           memcached.executor
-            .execute(key.hashCode, input)
+            .execute(key, input)
             .flatMap[Any, Throwable, Out](out => ZIO.attempt(output.unsafeDecode(out)(memcached.codec)))
         } else {
           ZIO.fail(MemcachedError.InvalidKey)
