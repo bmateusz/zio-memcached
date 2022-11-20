@@ -144,7 +144,7 @@ trait StorageSpec extends BaseSpec {
             key     <- uuid
             _       <- set(key, "value", Some(1.second))
             delayed <- get[String](key).delay(2.seconds).fork
-            result  <- TestClock.adjust(2.seconds) *> delayed.join
+            result  <- TestClock.adjust(3.seconds) *> delayed.join
           } yield assert(result)(isNone)
         },
         test("set ttl and update") {
@@ -169,7 +169,7 @@ trait StorageSpec extends BaseSpec {
             _       <- set(key, "value", None)
             _       <- touch(key, 1.second)
             delayed <- get[String](key).delay(2.seconds).fork
-            result  <- TestClock.adjust(2.seconds) *> delayed.join
+            result  <- TestClock.adjust(3.seconds) *> delayed.join
           } yield assert(result)(isNone)
         },
         test("set ttl with get and touch") {
@@ -178,7 +178,7 @@ trait StorageSpec extends BaseSpec {
             _         <- set(key, "value", None)
             gatResult <- getAndTouch[String](key, 1.seconds)
             delayed   <- get[String](key).delay(2.seconds).fork
-            getResult <- TestClock.adjust(2.seconds) *> delayed.join
+            getResult <- TestClock.adjust(3.seconds) *> delayed.join
           } yield assert(gatResult)(isSome(equalTo("value"))) && assert(getResult)(isNone)
         }
       ),
