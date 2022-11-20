@@ -62,9 +62,9 @@ object RespValue {
           ZIO.succeedNow(Some(value))
         case State.Failed(state, chars) =>
           ZIO.logError(s"Failed to decode $state with $chars") *> ZIO.fail(ProtocolError("Invalid data received"))
-        case State.Start       =>
+        case State.Start =>
           ZIO.succeedNow(None)
-        case other             =>
+        case other =>
           ZIO.logError(s"Unexpected state $other") *> ZIO.dieMessage(s"Deserialization bug, should not get $other")
       }
 
@@ -91,7 +91,7 @@ object RespValue {
       final def inProgress: Boolean =
         self match {
           case Done(_) | Failed(_, _) => false
-          case _                => true
+          case _                      => true
         }
 
       final def feed(chars: Chunk[Byte]): State =

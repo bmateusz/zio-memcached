@@ -27,7 +27,7 @@ object StringUtf8CodecSpec extends BaseSpec {
   override implicit val codec: BinaryCodec = StringUtf8Codec
 
   def spec: Spec[TestEnvironment with Scope, MemcachedError] =
-    suite("storage")(
+    suite("string utf-8 codec")(
       suite("set and get")(
         test("ascii string") {
           for {

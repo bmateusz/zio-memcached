@@ -41,16 +41,6 @@ trait StorageSpec extends BaseSpec {
             result <- get[String](key)
           } yield assert(result)(isNone)
         },
-        /* TODO
-        test("bad char") {
-          for {
-            key <- uuid
-            _ <- set(key, 55296.toChar)
-            result <- get[Char](key)
-            _ <- ZIO.logError(s"Look at this, 55296 is not: ${result.map(_.toInt)}")
-          } yield assert(result)(isSome(equalTo(55296.toChar)))
-        },
-         */
         test("ascii string") {
           check(Gen.asciiString)(setGetAndAssert(_))
         },
@@ -66,18 +56,9 @@ trait StorageSpec extends BaseSpec {
         test("int") {
           check(Gen.int)(setGetAndAssert(_))
         },
-        /*
         test("char") {
-          check(Gen.char) { (value: Char) =>
-            for {
-              key <- uuid
-              _ <- set[Char](key, value)
-              result <- get[Char](key)
-              _ <- ZIO.logInfo(s"char key: $key, value: ${value.toInt}, eq: ${result.contains(value)}")
-            } yield assert(result)(isSome(equalTo(value)))
-          }
+          check(Gen.unicodeChar)(setGetAndAssert(_))
         },
-         */
         test("long") {
           check(Gen.long)(setGetAndAssert(_))
         },
@@ -90,11 +71,23 @@ trait StorageSpec extends BaseSpec {
         test("double") {
           check(Gen.double)(setGetAndAssert(_))
         },
-        test("option some") {
+        test("big int") {
+          check(Gen.bigInt(minBigInt, maxBigInt))(setGetAndAssert(_))
+        },
+        test("big decimal") {
+          check(Gen.bigDecimal(minBigDecimal, maxBigDecimal))(setGetAndAssert(_))
+        },
+        test("option string") {
           check(Gen.option(Gen.string))(setGetAndAssert(_))
+        },
+        test("either string or long") {
+          check(Gen.either(Gen.string, Gen.long))(setGetAndAssert(_))
         },
         test("list of strings") {
           check(Gen.listOf(Gen.string))(setGetAndAssert(_))
+        },
+        test("vector of strings") {
+          check(Gen.vectorOf(Gen.string))(setGetAndAssert(_))
         },
         test("set of strings") {
           check(Gen.setOf(Gen.string))(setGetAndAssert(_))
@@ -108,12 +101,11 @@ trait StorageSpec extends BaseSpec {
         test("byte array chunk") {
           check(Gen.chunkOf(Gen.byte))(setGetAndAssert(_))
         },
+        test("uuid") {
+          check(Gen.uuid)(setGetAndAssert(_))
+        },
         test("case class") {
-          for {
-            key    <- uuid
-            _      <- set(key, Person("name", 1))
-            result <- get[Person](key)
-          } yield assert(result)(isSome(equalTo(Person("name", 1))))
+          check(Gen.int)(i => setGetAndAssert(Person("John", i)))
         }
       ),
       suite("delete")(

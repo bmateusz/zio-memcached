@@ -37,6 +37,11 @@ trait BaseSpec extends ZIOSpecDefault {
 
   final val uuid: UIO[String] =
     ZIO.succeed(UUID.randomUUID().toString)
+
+  final val maxBigInt: BigInt         = BigInt(Long.MaxValue) * BigInt(Long.MaxValue)
+  final val minBigInt: BigInt         = maxBigInt * BigInt(-1)
+  final val maxBigDecimal: BigDecimal = BigDecimal(Long.MinValue) * BigDecimal(Long.MinValue)
+  final val minBigDecimal: BigDecimal = maxBigDecimal * BigDecimal(-1)
 }
 
 object BaseSpec {
