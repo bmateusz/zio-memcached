@@ -178,6 +178,7 @@ object MemcachedExecutor {
         .via(RespValue.decoder)
         .collectSome
         .foreach(response => resQueue.take.flatMap(_.succeed(response)))
+        .orDie
 
     /**
      * Opens a connection to the server and launches send and receive operations. All failures are retried by opening a
