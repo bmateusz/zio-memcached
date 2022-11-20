@@ -21,19 +21,19 @@ import zio.memcached.model.UpdateResult.{Exists, NotFound, UpdateResult, Updated
 import zio.memcached.model.ValueHeaders.{MetaValueHeader, ValueHeaderWithCas}
 import zio.memcached.model.{CasUnique, ValueWithCasUnique}
 import zio.schema.Schema
-import zio.schema.codec.Codec
+import zio.schema.codec.BinaryCodec
 
 sealed trait Output[+A] {
   self =>
 
-  private[memcached] final def unsafeDecode(respValue: RespValue)(implicit codec: Codec): A =
+  private[memcached] final def unsafeDecode(respValue: RespValue)(implicit codec: BinaryCodec): A =
     tryDecode(respValue)
 
-  protected def tryDecode(respValue: RespValue)(implicit codec: Codec): A
+  protected def tryDecode(respValue: RespValue)(implicit codec: BinaryCodec): A
 
   final def map[B](f: A => B): Output[B] =
     new Output[B] {
-      protected def tryDecode(respValue: RespValue)(implicit codec: Codec): B = f(self.tryDecode(respValue))
+      protected def tryDecode(respValue: RespValue)(implicit codec: BinaryCodec): B = f(self.tryDecode(respValue))
     }
 
 }
@@ -45,28 +45,28 @@ object Output {
   def apply[A](implicit output: Output[A]): Output[A] = output
 
   final case class SingleGetOutput[A]()(implicit schema: Schema[A]) extends Output[Option[A]] {
-    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Option[A] =
+    protected def tryDecode(respValue: RespValue)(implicit codec: BinaryCodec): Option[A] =
       respValue match {
         case RespValue.End => None
         case RespValue.BulkStringWithHeader(_, s) =>
-          codec.decode(schema)(s).fold(e => throw CodecError(e), Some(_))
+          codec.decode(schema)(s).fold(e => throw e, Some(_))
         case other => throw ProtocolError(s"$other isn't a SingleGetOutput")
       }
   }
 
   final case class SingleGetWithCasOutput[A]()(implicit schema: Schema[A])
       extends Output[Option[ValueWithCasUnique[A]]] {
-    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Option[ValueWithCasUnique[A]] =
+    protected def tryDecode(respValue: RespValue)(implicit codec: BinaryCodec): Option[ValueWithCasUnique[A]] =
       respValue match {
         case RespValue.End => None
         case RespValue.BulkStringWithHeader(ValueHeaderWithCas(_, _, _, casUnique: CasUnique), s) =>
-          codec.decode(schema)(s).fold(e => throw CodecError(e), Some(_)).map(new ValueWithCasUnique(_, casUnique))
+          codec.decode(schema)(s).fold(e => throw e, Some(_)).map(new ValueWithCasUnique(_, casUnique))
         case other => throw ProtocolError(s"$other isn't a SingleGetWithCasOutput")
       }
   }
 
   case object TouchOutput extends Output[Boolean] {
-    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Boolean =
+    protected def tryDecode(respValue: RespValue)(implicit codec: BinaryCodec): Boolean =
       respValue match {
         case RespValue.Touched  => true
         case RespValue.NotFound => false
@@ -75,7 +75,7 @@ object Output {
   }
 
   case object SetOutput extends Output[Boolean] {
-    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Boolean =
+    protected def tryDecode(respValue: RespValue)(implicit codec: BinaryCodec): Boolean =
       respValue match {
         case RespValue.Stored    => true
         case RespValue.NotStored => false
@@ -84,7 +84,7 @@ object Output {
   }
 
   case object UpdateResultOutput extends Output[UpdateResult] {
-    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): UpdateResult =
+    protected def tryDecode(respValue: RespValue)(implicit codec: BinaryCodec): UpdateResult =
       respValue match {
         case RespValue.Stored   => Updated
         case RespValue.Exists   => Exists
@@ -94,7 +94,7 @@ object Output {
   }
 
   case object NumericOutput extends Output[Option[Long]] {
-    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Option[Long] =
+    protected def tryDecode(respValue: RespValue)(implicit codec: BinaryCodec): Option[Long] =
       respValue match {
         case RespValue.Numeric(i)                    => Some(i.toLong)
         case RespValue.Error(_) | RespValue.NotFound => None
@@ -103,7 +103,7 @@ object Output {
   }
 
   case object DeleteOutput extends Output[Boolean] {
-    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): Boolean =
+    protected def tryDecode(respValue: RespValue)(implicit codec: BinaryCodec): Boolean =
       respValue match {
         case RespValue.Deleted  => true
         case RespValue.NotFound => false
@@ -112,12 +112,12 @@ object Output {
   }
 
   final case class MetaGetOutput[A]()(implicit schema: Schema[A]) extends Output[MetaGetResult[A]] {
-    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): MetaGetResult[A] =
+    protected def tryDecode(respValue: RespValue)(implicit codec: BinaryCodec): MetaGetResult[A] =
       respValue match {
         case RespValue.MetaResult(RespValue.NotFound, _, _) =>
           MetaGetResultNotFound()
         case RespValue.MetaResult(_: RespValue, h: MetaValueHeader, Some(s)) =>
-          codec.decode(schema)(s).fold(e => throw CodecError(e), MetaGetResultValue(_, h))
+          codec.decode(schema)(s).fold(e => throw e, MetaGetResultValue(_, h))
         case RespValue.MetaResult(_: RespValue, h: MetaValueHeader, None) =>
           MetaGetResultHeadersOnly(h)
         case other => throw ProtocolError(s"$other isn't a MetaGetOutput")
@@ -125,7 +125,7 @@ object Output {
   }
 
   case object MetaSetOutput extends Output[MetaSetResult] {
-    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): MetaSetResult =
+    protected def tryDecode(respValue: RespValue)(implicit codec: BinaryCodec): MetaSetResult =
       respValue match {
         case RespValue.MetaResult(RespValue.Stored, h: MetaValueHeader, None) =>
           MetaSetResultStored(h)
@@ -140,7 +140,7 @@ object Output {
   }
 
   case object MetaDeleteOutput extends Output[MetaDeleteResult] {
-    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): MetaDeleteResult =
+    protected def tryDecode(respValue: RespValue)(implicit codec: BinaryCodec): MetaDeleteResult =
       respValue match {
         case RespValue.MetaResult(RespValue.Stored, h: MetaValueHeader, None) =>
           MetaDeleteResultDeleted(h)
@@ -158,7 +158,7 @@ object Output {
     def chunkBytesToLong(bytes: Chunk[Byte]): Long =
       new String(bytes.toArray).toLong
 
-    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): MetaArithmeticResult =
+    protected def tryDecode(respValue: RespValue)(implicit codec: BinaryCodec): MetaArithmeticResult =
       respValue match {
         case RespValue.MetaResult(RespValue.Stored, h: MetaValueHeader, value) =>
           MetaArithmeticResultSuccess(h, value.map(chunkBytesToLong))
@@ -173,7 +173,7 @@ object Output {
   }
 
   case object MetaDebugOutput extends Output[MetaDebugResult] {
-    protected def tryDecode(respValue: RespValue)(implicit codec: Codec): MetaDebugResult =
+    protected def tryDecode(respValue: RespValue)(implicit codec: BinaryCodec): MetaDebugResult =
       respValue match {
         case RespValue.MetaDebugResult(value) =>
           MetaDebugResultSuccess(value)

@@ -17,16 +17,16 @@
 package zio.memcached
 
 import zio._
-import zio.schema.codec.Codec
+import zio.schema.codec.BinaryCodec
 
 trait Memcached {
-  def codec: Codec
+  def codec: BinaryCodec
   def executor: MemcachedExecutor
 }
 
-final case class MemcachedLive(codec: Codec, executor: MemcachedExecutor) extends Memcached
+final case class MemcachedLive(codec: BinaryCodec, executor: MemcachedExecutor) extends Memcached
 
 object MemcachedLive {
-  lazy val layer: URLayer[MemcachedExecutor with Codec, Memcached] =
+  lazy val layer: URLayer[MemcachedExecutor with BinaryCodec, Memcached] =
     ZLayer.fromFunction(MemcachedLive.apply _)
 }

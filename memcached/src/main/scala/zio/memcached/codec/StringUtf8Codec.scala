@@ -19,26 +19,31 @@ package zio.memcached.codec
 import zio.memcached.MemcachedError.CodecError
 import zio.schema.Schema
 import zio.schema.StandardType.{DoubleType, IntType, LongType}
-import zio.schema.codec.Codec
+import zio.schema.codec._
 import zio.stream.ZPipeline
 import zio.{Chunk, ZIO}
 
 import java.nio.charset.StandardCharsets
 
-private[memcached] object StringUtf8Codec extends Codec {
-  def encoder[A](schema: Schema[A]): ZPipeline[Any, Nothing, A, Byte] =
-    ZPipeline.mapChunks(values => values.flatMap(Encoder.encode(schema, _)))
+private[memcached] object StringUtf8Codec extends BinaryCodec {
 
-  def encode[A](schema: Schema[A]): A => Chunk[Byte] = { a =>
-    Encoder.encode(schema, a)
-  }
+  def encoderFor[A](schema: Schema[A]): Encoder[Chunk[Byte], Byte, A] =
+    new Encoder[Chunk[Byte], Byte, A] {
+      def encode(value: A): Chunk[Byte] =
+        Encoder.encode(schema, value)
 
-  def decoder[A](schema: Schema[A]): ZPipeline[Any, String, Byte, A] =
-    ZPipeline.mapChunksZIO(chunk => ZIO.fromEither(Decoder.decode(schema, chunk).map(Chunk(_))))
+      def streamEncoder: ZPipeline[Any, Nothing, A, Byte] =
+        ZPipeline.mapChunks(values => values.flatMap(Encoder.encode(schema, _)))
+    }
 
-  def decode[A](schema: Schema[A]): Chunk[Byte] => Either[String, A] = { ch =>
-    Decoder.decode(schema, ch)
-  }
+  def decoderFor[A](schema: Schema[A]): Decoder[Chunk[Byte], Byte, A] =
+    new Decoder[Chunk[Byte], Byte, A] {
+      def decode(whole: Chunk[Byte]): Either[DecodeError, A] =
+        Decoder.decode(schema, whole)
+
+      def streamDecoder: ZPipeline[Any, DecodeError, Byte, A] =
+        ZPipeline.mapChunksZIO(chunk => ZIO.fromEither(Decoder.decode(schema, chunk).map(Chunk(_))))
+    }
 
   object Encoder {
     def encode[A](schema: Schema[A], value: A): Chunk[Byte] =
@@ -49,7 +54,7 @@ private[memcached] object StringUtf8Codec extends Codec {
   }
 
   object Decoder {
-    def decode[A](schema: Schema[A], chunk: Chunk[Byte]): Either[String, A] = {
+    def decode[A](schema: Schema[A], chunk: Chunk[Byte]): Either[DecodeError, A] = {
       def utf8String = new String(chunk.toArray, StandardCharsets.UTF_8)
 
       schema match {
@@ -57,7 +62,7 @@ private[memcached] object StringUtf8Codec extends Codec {
         case Schema.Primitive(LongType, _)   => Right(utf8String.toLong.asInstanceOf[A])
         case Schema.Primitive(DoubleType, _) => Right(utf8String.toDouble.asInstanceOf[A])
         case Schema.Primitive(_, _)          => Right(utf8String.asInstanceOf[A])
-        case _                               => Left("the codec support only primitives")
+        case other                           => Left(DecodeError.MalformedField(other, "the codec support only primitives"))
       }
     }
   }

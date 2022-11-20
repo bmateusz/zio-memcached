@@ -42,8 +42,8 @@ lazy val memcached =
       libraryDependencies ++= List(
         "dev.zio"                %% "zio-streams"             % "2.0.4",
         "dev.zio"                %% "zio-logging"             % "2.1.4",
-        "dev.zio"                %% "zio-schema"              % "0.2.1",
-        "dev.zio"                %% "zio-schema-protobuf"     % "0.2.1" % Test,
+        "dev.zio"                %% "zio-schema"              % "0.3.1",
+        "dev.zio"                %% "zio-schema-protobuf"     % "0.3.1" % Test,
         "dev.zio"                %% "zio-test"                % "2.0.4" % Test,
         "dev.zio"                %% "zio-test-sbt"            % "2.0.4" % Test,
         "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.1"
@@ -61,7 +61,7 @@ lazy val benchmarks =
       publish / skip := true,
       libraryDependencies ++= List(
         "net.spy"  % "spymemcached"        % "2.12.3",
-        "dev.zio" %% "zio-schema-protobuf" % "0.2.1"
+        "dev.zio" %% "zio-schema-protobuf" % "0.3.1"
       )
     )
 
@@ -74,8 +74,8 @@ lazy val example =
       publish / skip := true,
       libraryDependencies ++= List(
         "dev.zio" %% "zio-streams"         % "2.0.4",
-        "dev.zio" %% "zio-schema-protobuf" % "0.2.1",
-        "dev.zio" %% "zio-json"            % "0.3.0-RC11",
+        "dev.zio" %% "zio-schema-protobuf" % "0.3.1",
+        "dev.zio" %% "zio-json"            % "0.3.0",
         "dev.zio" %% "zio-http"            % "0.0.3"
       )
     )

@@ -19,7 +19,7 @@ package zio.memcached.benchmarks
 import net.spy.memcached.MemcachedClient
 import zio._
 import zio.memcached._
-import zio.schema.codec.{Codec, ProtobufCodec}
+import zio.schema.codec.{BinaryCodec, ProtobufCodec}
 
 import java.net.InetSocketAddress
 
@@ -48,7 +48,7 @@ object BenchmarkRuntime {
   private final val Layer =
     ZLayer.make[Memcached](
       MemcachedExecutor.local,
-      ZLayer.succeed[Codec](ProtobufCodec),
+      ZLayer.succeed[BinaryCodec](ProtobufCodec),
       MemcachedLive.layer
     )
 

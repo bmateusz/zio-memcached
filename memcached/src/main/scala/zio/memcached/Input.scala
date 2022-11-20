@@ -19,7 +19,7 @@ package zio.memcached
 import zio._
 import zio.memcached.model.{CasUnique, MetaArithmeticFlags, MetaDebugFlags, MetaDeleteFlags, MetaGetFlags, MetaSetFlags}
 import zio.schema.Schema
-import zio.schema.codec.Codec
+import zio.schema.codec.BinaryCodec
 
 import java.time.Instant
 
@@ -29,7 +29,7 @@ object Input {
   private[memcached] val CrLfChunk = Chunk.fromArray("\r\n".getBytes())
 
   @inline
-  private[this] def encodeBytes[A](value: A)(implicit codec: Codec, schema: Schema[A]): Chunk[Byte] =
+  private[this] def encodeBytes[A](value: A)(implicit codec: BinaryCodec, schema: Schema[A]): Chunk[Byte] =
     codec.encode(schema)(value)
 
   val ThirtyDaysInSeconds: Long = 60 * 60 * 24 * 30L
@@ -84,7 +84,7 @@ object Input {
       key: String,
       expireTime: Option[Duration],
       value: A
-    )(implicit codec: Codec): Input = {
+    )(implicit codec: BinaryCodec): Input = {
       val expires      = expireTime.map(durationToSeconds).getOrElse(0L)
       val encodedValue = encodeBytes(value)
       val header       = s"$command $key 0 $expires ${encodedValue.length}\r\n".getBytes()
@@ -97,7 +97,7 @@ object Input {
       expireTime: Option[Duration],
       cas: CasUnique,
       value: A
-    )(implicit codec: Codec): Input = {
+    )(implicit codec: BinaryCodec): Input = {
       val expires      = expireTime.map(durationToSeconds).getOrElse(0L)
       val encodedValue = encodeBytes(value)
       val header       = s"$command $key 0 $expires ${encodedValue.length} ${cas.value}\r\n".getBytes()
@@ -114,33 +114,33 @@ object Input {
   }
 
   object SetCommand {
-    def apply[A: Schema](key: String, expireTime: Option[Duration], value: A)(implicit codec: Codec): Input =
+    def apply[A: Schema](key: String, expireTime: Option[Duration], value: A)(implicit codec: BinaryCodec): Input =
       GenericSetCommand("set", key, expireTime, value)
   }
 
   object AddCommand {
-    def apply[A: Schema](key: String, expireTime: Option[Duration], value: A)(implicit codec: Codec): Input =
+    def apply[A: Schema](key: String, expireTime: Option[Duration], value: A)(implicit codec: BinaryCodec): Input =
       GenericSetCommand("add", key, expireTime, value)
   }
 
   object ReplaceCommand {
-    def apply[A: Schema](key: String, expireTime: Option[Duration], value: A)(implicit codec: Codec): Input =
+    def apply[A: Schema](key: String, expireTime: Option[Duration], value: A)(implicit codec: BinaryCodec): Input =
       GenericSetCommand("replace", key, expireTime, value)
   }
 
   object AppendCommand {
-    def apply[A: Schema](key: String, expireTime: Option[Duration], value: A)(implicit codec: Codec): Input =
+    def apply[A: Schema](key: String, expireTime: Option[Duration], value: A)(implicit codec: BinaryCodec): Input =
       GenericSetCommand("append", key, expireTime, value)
   }
 
   object PrependCommand {
-    def apply[A: Schema](key: String, expireTime: Option[Duration], value: A)(implicit codec: Codec): Input =
+    def apply[A: Schema](key: String, expireTime: Option[Duration], value: A)(implicit codec: BinaryCodec): Input =
       GenericSetCommand("prepend", key, expireTime, value)
   }
 
   object CompareAndSwapCommand {
     def apply[A: Schema](key: String, casUnique: CasUnique, expireTime: Option[Duration], value: A)(implicit
-      codec: Codec
+      codec: BinaryCodec
     ): Input =
       GenericSetCommand("cas", key, expireTime, casUnique, value)
   }
@@ -166,7 +166,7 @@ object Input {
   }
 
   object MetaSetCommand {
-    def apply[A: Schema](key: String, value: A, flags: MetaSetFlags)(implicit codec: Codec): Input = {
+    def apply[A: Schema](key: String, value: A, flags: MetaSetFlags)(implicit codec: BinaryCodec): Input = {
       val encodedValue = encodeBytes(value)
       val header       = s"ms $key ${encodedValue.length}${flags.encoded}\r\n".getBytes()
       GenericSetCommand(Chunk.fromArray(header), encodedValue)

@@ -18,13 +18,13 @@ package zio.memcached.codec
 
 import zio._
 import zio.memcached._
-import zio.schema.codec.Codec
+import zio.schema.codec.BinaryCodec
 import zio.test.Assertion.{exists => _, _}
 import zio.test._
 
 object StringUtf8CodecSpec extends BaseSpec {
 
-  override implicit val codec: Codec = StringUtf8Codec
+  override implicit val codec: BinaryCodec = StringUtf8Codec
 
   def spec: Spec[TestEnvironment with Scope, MemcachedError] =
     suite("storage")(

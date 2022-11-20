@@ -28,14 +28,14 @@ trait StorageSpec extends BaseSpec {
   private def setGetAndAssert[A](value: A)(implicit schema: Schema[A]) =
     for {
       key    <- uuid
-      _      <- set[A](key, value)
+      _      <- set(key, value)
       result <- get[A](key)
     } yield assert(result)(isSome(equalTo(value)))
 
   def storageSuite: Spec[Memcached, MemcachedError] =
     suite("storage")(
       suite("set and get")(
-        test("emtpy string") {
+        test("get nothing") {
           for {
             key    <- uuid
             result <- get[String](key)

@@ -23,7 +23,7 @@ import zio.memcached._
 import zio.memcached.model.UpdateResult.UpdateResult
 import zio.memcached.model.{CasUnique, ValueWithCasUnique}
 import zio.schema.Schema
-import zio.schema.codec.Codec
+import zio.schema.codec.BinaryCodec
 
 /**
  * Storage commands. See [[https://raw.githubusercontent.com/memcached/memcached/master/doc/protocol.txt]] for more
@@ -123,7 +123,7 @@ trait Storage {
     expiration: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, Boolean] =
     ZIO.serviceWithZIO[Memcached] { memcached =>
-      implicit val codec: Codec = memcached.codec
+      implicit val codec: BinaryCodec = memcached.codec
       MemcachedCommand(key, SetCommand[V](key, expiration, value), SetOutput)
     }
 
@@ -147,7 +147,7 @@ trait Storage {
     expiration: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, Boolean] =
     ZIO.serviceWithZIO[Memcached] { memcached =>
-      implicit val codec: Codec = memcached.codec
+      implicit val codec: BinaryCodec = memcached.codec
       MemcachedCommand(key, AddCommand[V](key, expiration, value), SetOutput)
     }
 
@@ -171,7 +171,7 @@ trait Storage {
     expiration: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, Boolean] =
     ZIO.serviceWithZIO[Memcached] { memcached =>
-      implicit val codec: Codec = memcached.codec
+      implicit val codec: BinaryCodec = memcached.codec
       MemcachedCommand(key, ReplaceCommand[V](key, expiration, value), SetOutput)
     }
 
@@ -195,7 +195,7 @@ trait Storage {
     expiration: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, Boolean] =
     ZIO.serviceWithZIO[Memcached] { memcached =>
-      implicit val codec: Codec = memcached.codec
+      implicit val codec: BinaryCodec = memcached.codec
       MemcachedCommand(key, AppendCommand[V](key, expiration, value), SetOutput)
     }
 
@@ -219,7 +219,7 @@ trait Storage {
     expiration: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, Boolean] =
     ZIO.serviceWithZIO[Memcached] { memcached =>
-      implicit val codec: Codec = memcached.codec
+      implicit val codec: BinaryCodec = memcached.codec
       MemcachedCommand(key, PrependCommand[V](key, expiration, value), SetOutput)
     }
 
@@ -247,7 +247,7 @@ trait Storage {
     expiration: Option[Duration] = None
   ): ZIO[Memcached, MemcachedError, UpdateResult] =
     ZIO.serviceWithZIO[Memcached] { memcached =>
-      implicit val codec: Codec = memcached.codec
+      implicit val codec: BinaryCodec = memcached.codec
       MemcachedCommand(key, CompareAndSwapCommand[V](key, casUnique, expiration, value), UpdateResultOutput)
     }
 

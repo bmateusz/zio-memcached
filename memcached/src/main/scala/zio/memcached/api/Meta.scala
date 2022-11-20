@@ -34,7 +34,7 @@ import zio.memcached.model.MetaSetFlags.MetaSetFlag
 import zio.memcached.model.{MetaArithmeticFlags, MetaDebugFlags, MetaDeleteFlags, MetaGetFlags, MetaSetFlags}
 import zio.memcached.{Memcached, MemcachedCommand, MemcachedError}
 import zio.schema.Schema
-import zio.schema.codec.Codec
+import zio.schema.codec.BinaryCodec
 
 /**
  * Meta commands. See [[https://raw.githubusercontent.com/memcached/memcached/master/doc/protocol.txt]] for more
@@ -109,7 +109,7 @@ trait Meta {
    */
   def metaSet[R: Schema](key: String, value: R, flags: MetaSetFlags): ZIO[Memcached, MemcachedError, MetaSetResult] =
     ZIO.serviceWithZIO[Memcached] { memcached =>
-      implicit val codec: Codec = memcached.codec
+      implicit val codec: BinaryCodec = memcached.codec
       MemcachedCommand(key, MetaSetCommand[R](key, value, flags), MetaSetOutput)
     }
 
