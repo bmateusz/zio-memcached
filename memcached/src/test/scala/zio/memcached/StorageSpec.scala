@@ -20,172 +20,92 @@ import zio._
 import zio.memcached.BaseSpec.Person
 import zio.memcached.model.UpdateResult
 import zio.schema.DeriveSchema.gen
+import zio.schema.Schema
 import zio.test.Assertion.{exists => _, _}
 import zio.test._
 
 trait StorageSpec extends BaseSpec {
+  private def setGetAndAssert[A](value: A)(implicit schema: Schema[A]) =
+    for {
+      key    <- uuid
+      _      <- set(key, value)
+      result <- get[A](key)
+    } yield assert(result)(isSome(equalTo(value)))
+
   def storageSuite: Spec[Memcached, MemcachedError] =
     suite("storage")(
       suite("set and get")(
-        test("ascii string") {
-          for {
-            key    <- uuid
-            _      <- set(key, "value")
-            result <- get[String](key)
-          } yield assert(result)(isSome(equalTo("value")))
-        },
-        test("emtpy string") {
+        test("get nothing") {
           for {
             key    <- uuid
             result <- get[String](key)
           } yield assert(result)(isNone)
         },
-        test("string including CrLf") {
-          for {
-            key    <- uuid
-            _      <- set(key, "carriage return\r\nline feed")
-            result <- get[String](key)
-          } yield assert(result)(isSome(equalTo("carriage return\r\nline feed")))
-        },
-        test("latin2 string") {
-          for {
-            key    <- uuid
-            _      <- set(key, "Árvíztűrő tükörfúrógép")
-            result <- get[String](key)
-          } yield assert(result)(isSome(equalTo("Árvíztűrő tükörfúrógép")))
+        test("ascii string") {
+          check(Gen.asciiString)(setGetAndAssert(_))
         },
         test("unicode string") {
-          for {
-            key    <- uuid
-            _      <- set(key, "日本国")
-            result <- get[String](key)
-          } yield assert(result)(isSome(equalTo("日本国")))
-        },
-        test("emoji string") {
-          for {
-            key    <- uuid
-            _      <- set(key, "\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67\u200D\uD83D\uDC66")
-            result <- get[String](key)
-          } yield assert(result)(isSome(equalTo("\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67\u200D\uD83D\uDC66")))
+          check(Gen.string)(setGetAndAssert(_))
         },
         test("byte") {
-          for {
-            key    <- uuid
-            _      <- set(key, Byte.MaxValue)
-            result <- get[Byte](key)
-          } yield assert(result)(isSome(equalTo(127: Byte)))
+          check(Gen.byte)(setGetAndAssert(_))
         },
         test("short") {
-          for {
-            key    <- uuid
-            _      <- set(key, Short.MinValue)
-            result <- get[Short](key)
-          } yield assert(result)(isSome(equalTo(-32768: Short)))
+          check(Gen.short)(setGetAndAssert(_))
         },
         test("int") {
-          for {
-            key    <- uuid
-            _      <- set(key, 1)
-            result <- get[Int](key)
-          } yield assert(result)(isSome(equalTo(1)))
+          check(Gen.int)(setGetAndAssert(_))
         },
-        test("char max") {
-          for {
-            key    <- uuid
-            _      <- set(key, Char.MaxValue)
-            result <- get[Char](key)
-          } yield assert(result)(isSome(equalTo(65535: Char)))
-        },
-        test("char min") {
-          for {
-            key    <- uuid
-            _      <- set(key, '\u0000')
-            result <- get[Char](key)
-          } yield assert(result)(isSome(equalTo('\u0000')))
+        test("char") {
+          check(Gen.unicodeChar)(setGetAndAssert(_))
         },
         test("long") {
-          for {
-            key    <- uuid
-            _      <- set(key, Long.MaxValue)
-            result <- get[Long](key)
-          } yield assert(result)(isSome(equalTo(9223372036854775807L: Long)))
+          check(Gen.long)(setGetAndAssert(_))
         },
         test("boolean") {
-          for {
-            key    <- uuid
-            _      <- set(key, true)
-            result <- get[Boolean](key)
-          } yield assert(result)(isSome(equalTo(true)))
+          check(Gen.boolean)(setGetAndAssert(_))
         },
         test("float") {
-          for {
-            key    <- uuid
-            _      <- set(key, 1.0f)
-            result <- get[Float](key)
-          } yield assert(result)(isSome(equalTo(1.0f)))
+          check(Gen.float)(setGetAndAssert(_))
         },
         test("double") {
-          for {
-            key    <- uuid
-            _      <- set(key, 1.0)
-            result <- get[Double](key)
-          } yield assert(result)(isSome(equalTo(1.0)))
+          check(Gen.double)(setGetAndAssert(_))
         },
-        test("option some") {
-          for {
-            key    <- uuid
-            _      <- set(key, Option[String]("a"))
-            result <- get[Option[String]](key)
-          } yield assert(result)(isSome(isSome(equalTo("a"))))
+        test("big int") {
+          check(Gen.bigInt(minBigInt, maxBigInt))(setGetAndAssert(_))
         },
-        test("option none") {
-          for {
-            key    <- uuid
-            _      <- set(key, Option[String](null))
-            result <- get[Option[String]](key)
-          } yield assert(result)(isSome(isNone))
+        test("big decimal") {
+          check(Gen.bigDecimal(minBigDecimal, maxBigDecimal))(setGetAndAssert(_))
+        },
+        test("option string") {
+          check(Gen.option(Gen.string))(setGetAndAssert(_))
+        },
+        test("either string or long") {
+          check(Gen.either(Gen.string, Gen.long))(setGetAndAssert(_))
         },
         test("list of strings") {
-          for {
-            key    <- uuid
-            _      <- set(key, List[String]("a", "b", "c"))
-            result <- get[List[String]](key)
-          } yield assert(result)(isSome(equalTo(List[String]("a", "b", "c"))))
+          check(Gen.listOf(Gen.string))(setGetAndAssert(_))
         },
-        test("set") {
-          for {
-            key    <- uuid
-            _      <- set(key, Set[String]("a", "b", "c"))
-            result <- get[Set[String]](key)
-          } yield assert(result)(isSome(equalTo(Set[String]("a", "b", "c"))))
+        test("vector of strings") {
+          check(Gen.vectorOf(Gen.string))(setGetAndAssert(_))
+        },
+        test("set of strings") {
+          check(Gen.setOf(Gen.string))(setGetAndAssert(_))
         },
         test("map") {
-          for {
-            key    <- uuid
-            _      <- set(key, Map[String, String]("a" -> "b", "c" -> "d"))
-            result <- get[Map[String, String]](key)
-          } yield assert(result)(isSome(equalTo(Map[String, String]("a" -> "b", "c" -> "d"))))
+          check(Gen.mapOf(Gen.string, Gen.long))(setGetAndAssert(_))
         },
         test("tuple2") {
-          for {
-            key    <- uuid
-            _      <- set(key, ("a", "b"))
-            result <- get[(String, String)](key)
-          } yield assert(result)(isSome(equalTo(("a", "b"))))
+          check(Gen.string <*> Gen.string)(setGetAndAssert(_))
         },
         test("byte array chunk") {
-          for {
-            key    <- uuid
-            _      <- set(key, Chunk[Byte](1, 2, 3))
-            result <- get[Chunk[Byte]](key)
-          } yield assert(result)(isSome(equalTo(Chunk[Byte](1, 2, 3))))
+          check(Gen.chunkOf(Gen.byte))(setGetAndAssert(_))
+        },
+        test("uuid") {
+          check(Gen.uuid)(setGetAndAssert(_))
         },
         test("case class") {
-          for {
-            key    <- uuid
-            _      <- set(key, Person("name", 1))
-            result <- get[Person](key)
-          } yield assert(result)(isSome(equalTo(Person("name", 1))))
+          check(Gen.int)(i => setGetAndAssert(Person("John", i)))
         }
       ),
       suite("delete")(
@@ -224,7 +144,7 @@ trait StorageSpec extends BaseSpec {
             key     <- uuid
             _       <- set(key, "value", Some(1.second))
             delayed <- get[String](key).delay(2.seconds).fork
-            result  <- TestClock.adjust(2.seconds) *> delayed.join
+            result  <- TestClock.adjust(3.seconds) *> delayed.join
           } yield assert(result)(isNone)
         },
         test("set ttl and update") {
@@ -249,7 +169,7 @@ trait StorageSpec extends BaseSpec {
             _       <- set(key, "value", None)
             _       <- touch(key, 1.second)
             delayed <- get[String](key).delay(2.seconds).fork
-            result  <- TestClock.adjust(2.seconds) *> delayed.join
+            result  <- TestClock.adjust(3.seconds) *> delayed.join
           } yield assert(result)(isNone)
         },
         test("set ttl with get and touch") {
@@ -258,7 +178,7 @@ trait StorageSpec extends BaseSpec {
             _         <- set(key, "value", None)
             gatResult <- getAndTouch[String](key, 1.seconds)
             delayed   <- get[String](key).delay(2.seconds).fork
-            getResult <- TestClock.adjust(2.seconds) *> delayed.join
+            getResult <- TestClock.adjust(3.seconds) *> delayed.join
           } yield assert(gatResult)(isSome(equalTo("value"))) && assert(getResult)(isNone)
         }
       ),

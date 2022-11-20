@@ -17,6 +17,7 @@
 package zio.memcached
 
 import zio._
+import zio.memcached.MemcachedError.ProtocolError
 import zio.memcached.model.ValueHeaders.{GenericValueHeader, MetaValueHeader, valueHeader}
 import zio.stream._
 
@@ -57,10 +58,14 @@ object RespValue {
     // ZSink fold will return a State.Start when contFn is false
     val lineProcessor =
       ZSink.fold[Chunk[Byte], State](State.Start)(_.inProgress)(_ feed _).mapZIO {
-        case State.Done(value) => ZIO.succeedNow(Some(value))
-        case State.Failed      => ZIO.fail(MemcachedError.ProtocolError("Invalid data received."))
-        case State.Start       => ZIO.succeedNow(None)
-        case other             => ZIO.dieMessage(s"Deserialization bug, should not get $other")
+        case State.Done(value) =>
+          ZIO.succeedNow(Some(value))
+        case State.Failed(state, chars) =>
+          ZIO.logError(s"Failed to decode $state with $chars") *> ZIO.fail(ProtocolError("Invalid data received"))
+        case State.Start =>
+          ZIO.succeedNow(None)
+        case other =>
+          ZIO.logError(s"Unexpected state $other") *> ZIO.dieMessage(s"Deserialization bug, should not get $other")
       }
 
     ZPipeline
@@ -85,8 +90,8 @@ object RespValue {
 
       final def inProgress: Boolean =
         self match {
-          case Done(_) | Failed => false
-          case _                => true
+          case Done(_) | Failed(_, _) => false
+          case _                      => true
         }
 
       final def feed(chars: Chunk[Byte]): State =
@@ -138,20 +143,22 @@ object RespValue {
                   case "MN" => // Answer of Meta No-Op
                     Done(MetaResult(End, parseMetaHeader(flags), None))
                   case _ =>
-                    Failed
+                    Failed(self, chars)
                 }
               case NumericRegex(value) =>
                 Done(Numeric(value))
               case _ =>
-                Failed
+                Failed(self, chars)
             }
 
           case CollectingValue(rem, chunk, header) =>
             if (rem == 0) {
               if (chars == EndChunk) {
                 Done(BulkStringWithHeader(header, chunk.result()))
+              } else if (chars.isEmpty) {
+                CollectingValue(rem, chunk, header)
               } else {
-                Failed
+                Failed(self, chars)
               }
             } else if (chars.length >= rem) {
               chunk ++= chars.take(rem)
@@ -180,14 +187,15 @@ object RespValue {
               CollectingMetaValue(rem - chars.length - 2, chunk, header)
             }
 
-          case _ => Failed
+          case _ =>
+            Failed(self, chars)
         }
     }
 
     object State {
       case object Start extends State
 
-      case object Failed extends State
+      case class Failed(state: State, chars: Chunk[Byte]) extends State
 
       final case class CollectingValue(
         rem: Int,

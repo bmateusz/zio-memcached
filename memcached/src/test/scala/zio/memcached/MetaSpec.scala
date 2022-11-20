@@ -206,7 +206,7 @@ trait MetaSpec extends BaseSpec {
             delayed <- metaGet[String](key, MetaGetFlags.ReturnItemValue, MetaGetFlags.UpdateRemainingTTL(1))
                          .delay(2.seconds)
                          .fork
-            result <- TestClock.adjust(2.seconds) *> delayed.join
+            result <- TestClock.adjust(3.seconds) *> delayed.join
           } yield assert(result)(equalTo(MetaGetResultNotFound()))
         },
         test("delete") {
@@ -303,7 +303,7 @@ trait MetaSpec extends BaseSpec {
                          MetaArithmeticFlags.InitialValue(1)
                        )
             sleeper <- Clock.sleep(2.seconds).fork
-            _       <- TestClock.adjust(2.seconds) *> sleeper.join
+            _       <- TestClock.adjust(3.seconds) *> sleeper.join
             result2 <- metaArithmetic(
                          key,
                          MetaArithmeticFlags.ReturnItemValue,

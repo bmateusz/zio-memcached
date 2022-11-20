@@ -20,7 +20,7 @@ import example.api.Api
 import zio._
 import zio.http.{Server, ServerConfig}
 import zio.memcached.{MemcachedConfig, MemcachedExecutor, MemcachedLive}
-import zio.schema.codec.{Codec, ProtobufCodec}
+import zio.schema.codec.{BinaryCodec, ProtobufCodec}
 
 object Main extends ZIOAppDefault {
   def run: ZIO[ZIOAppArgs with Scope, Any, ExitCode] =
@@ -33,7 +33,7 @@ object Main extends ZIOAppDefault {
         MemcachedApiLive.layer,
         MemcachedExecutor.layer,
         MemcachedLive.layer,
-        ZLayer.succeed[Codec](ProtobufCodec)
+        ZLayer.succeed[BinaryCodec](ProtobufCodec)
       )
       .exitCode
 
