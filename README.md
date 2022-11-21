@@ -14,6 +14,16 @@ ZIO Memcached is a type-safe, performant, ZIO native Memcached client.
 
 Learn more on the [ZIO Memcached Microsite](https://zio.github.io/zio-memcached/)!
 
+# Getting started
+
+See the [example](example/src/main) project, which is a fully featured client using [ZIO HTTP](https://github.com/zio/zio-http).
+
+To run the tests, the example, or the benchmarks, you have to run two Memcached instances with the default port (11211) and 11212.
+
+You can run Memcached using Docker, starting the two instances with `docker-compose up -d`. When finished, you can stop them with `docker-compose down -v`.
+
+If you prefer running Memcached natively, you can also download it using your package manager (e.g., `brew install memcached`), and start two instances with `memcached` and `memcached -p 11212`. No additional configuration is needed. If you want to debug, you can increase the verbosity with the `-vv` parameter.
+
 # Contributing
 
 [Documentation for contributors](https://zio.github.io/zio-memcached/docs/about/about_contributing)
