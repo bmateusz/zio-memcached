@@ -107,7 +107,7 @@ trait StorageSpec extends BaseSpec {
         test("case class") {
           check(Gen.int)(i => setGetAndAssert(Person("John", i)))
         }
-      ),
+      ) @@ TestAspect.sequential,
       suite("delete")(
         test("delete existing key") {
           for {

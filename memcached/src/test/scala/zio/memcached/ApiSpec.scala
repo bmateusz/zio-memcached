@@ -17,7 +17,7 @@
 package zio.memcached
 
 import zio._
-import zio.test.TestAspect._
+import zio.test._
 
 object ApiSpec extends StorageSpec with MetaSpec {
 
@@ -26,12 +26,12 @@ object ApiSpec extends StorageSpec with MetaSpec {
       suite("Live Executor")(
         storageSuite,
         metaSuite
-      ).provideLayerShared(LiveLayer) @@ withLiveEnvironment,
+      ).provideLayerShared(LiveLayer) @@ TestAspect.withLiveEnvironment,
       suite("Test Executor")(
         storageSuite,
         metaSuite
       ).provideLayerShared(TestLayer)
-    ) @@ parallelN(2)
+    )
 
   private val LiveLayer =
     ZLayer.make[Memcached](MemcachedExecutor.local, MemcachedLive.layer, ZLayer.succeed(codec))
