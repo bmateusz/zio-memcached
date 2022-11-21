@@ -31,7 +31,7 @@ object ApiSpec extends StorageSpec with MetaSpec {
         storageSuite,
         metaSuite
       ).provideLayerShared(TestLayer)
-    ) @@ sequential
+    ) @@ parallelN(2)
 
   private val LiveLayer =
     ZLayer.make[Memcached](MemcachedExecutor.local, MemcachedLive.layer, ZLayer.succeed(codec))
