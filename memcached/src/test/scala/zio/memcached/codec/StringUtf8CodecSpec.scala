@@ -36,7 +36,7 @@ object StringUtf8CodecSpec extends BaseSpec {
             result <- get[String](key)
           } yield assert(result)(isSome(equalTo("value")))
         },
-        test("emtpy string") {
+        test("empty string") {
           for {
             key    <- uuid
             result <- get[String](key)
